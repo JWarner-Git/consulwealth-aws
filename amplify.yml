@@ -1,0 +1,22 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - pip install -r requirements.txt
+        - python clean_backend/manage.py collectstatic --no-input
+    test:
+      commands:
+        - echo "No tests specified"
+frontend:
+  phases:
+    build:
+      commands:
+        - echo "No frontend build commands"
+  artifacts:
+    baseDirectory: clean_backend/staticfiles
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/* 

@@ -1,0 +1,1 @@
+web: cd clean_backend && gunicorn core.wsgi:application --log-file - 

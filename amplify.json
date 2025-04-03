@@ -1,0 +1,41 @@
+{
+  "providers": {
+    "awscloudformation": {
+      "AuthRoleName": "consulwealth-auth-role",
+      "UnauthRoleName": "consulwealth-unauth-role",
+      "AuthRoleArn": {
+        "Fn::GetAtt": ["AuthRole", "Arn"]
+      },
+      "UnauthRoleArn": {
+        "Fn::GetAtt": ["UnauthRole", "Arn"]
+      }
+    }
+  },
+  "api": {
+    "consulwealth": {
+      "service": "AppSync",
+      "providerPlugin": "awscloudformation",
+      "output": {
+        "authConfig": {
+          "defaultAuthentication": {
+            "authenticationType": "API_KEY"
+          },
+          "additionalAuthenticationProviders": []
+        }
+      }
+    }
+  },
+  "auth": {
+    "consulwealth": {
+      "service": "Cognito",
+      "providerPlugin": "awscloudformation"
+    }
+  },
+  "hosting": {
+    "amplifyhosting": {
+      "service": "amplifyhosting",
+      "providerPlugin": "awscloudformation",
+      "type": "manual"
+    }
+  }
+} 

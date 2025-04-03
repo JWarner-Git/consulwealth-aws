@@ -1,0 +1,30 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo Installing dependencies...
+      - pip install -r requirements.txt
+  pre_build:
+    commands:
+      - echo Running tests...
+      - cd clean_backend && python manage.py test
+  build:
+    commands:
+      - echo Collecting static files...
+      - cd clean_backend && python manage.py collectstatic --noinput
+  post_build:
+    commands:
+      - echo Build completed on `date`
+
+artifacts:
+  files:
+    - clean_backend/**/*
+    - requirements.txt
+    - buildspec.yml
+    - amplify.yml
+    - Procfile
+    - wsgi-entrypoint.sh
+  discard-paths: no 
