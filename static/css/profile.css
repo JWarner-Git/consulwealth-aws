@@ -1,0 +1,206 @@
+/* Profile Page Styles */
+:root {
+  --primary-dark: #2B5830;
+  --primary-medium: #4D8B48;
+  --primary-light: #8CC63F;
+  --primary-color: #3E8033;
+  --primary-very-light: #E8F0E6;
+  --accent-green: #66a556;
+  --tan-light: #F7F3E9;
+  --tan-medium: #EAE3D2;
+  --tan-dark: #D3C7A7;
+  --body-bg: #f9f9f7;
+  --bg-body: #FFFEF9;
+  --bg-element: #ffffff;
+  --text-dark: #2A3930;
+  --text-medium: #556B5E;
+  --text-muted: #778D83;
+  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  --hover-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  --border-radius-lg: 0.75rem;
+  --border-radius-sm: 0.375rem;
+}
+
+/* Layout Styling */
+.container-fluid {
+  max-width: 1400px;
+  padding: 1.5rem;
+}
+
+/* Left Sidebar Styling */
+.user-profile-card, 
+.bank-connect-card, 
+.profile-nav,
+.profile-content-card {
+  background-color: var(--bg-element);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.user-profile-card:hover, 
+.bank-connect-card:hover, 
+.profile-content-card:hover {
+  box-shadow: var(--hover-shadow);
+}
+
+/* User Avatar */
+.user-avatar {
+  width: 80px;
+  height: 80px;
+  background-color: var(--primary-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  color: white;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+/* Profile Completion */
+.profile-completion {
+  margin-top: 1.5rem;
+}
+
+.progress {
+  margin-top: 0.5rem;
+  background-color: var(--primary-very-light);
+}
+
+.progress-bar {
+  background-color: var(--primary-color);
+}
+
+/* Bank Connect Card */
+.bank-icon {
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+.bank-connect-card .btn-success {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.bank-connect-card .btn-success:hover {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+/* Navigation */
+.profile-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.profile-nav .nav-item {
+  display: block;
+  padding: 0.75rem 1rem;
+  color: var(--text-medium);
+  text-decoration: none;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.profile-nav .nav-item:hover {
+  background-color: var(--primary-very-light);
+  color: var(--primary-dark);
+}
+
+.profile-nav .nav-item.active {
+  background-color: var(--primary-very-light);
+  color: var(--primary-dark);
+  font-weight: 500;
+}
+
+/* Profile Content Area */
+.profile-header {
+  border-bottom: 1px solid var(--primary-very-light);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.profile-header h3 {
+  color: var(--primary-dark);
+  margin-bottom: 0.5rem;
+}
+
+.profile-header p {
+  color: var(--text-medium);
+  margin-bottom: 0;
+}
+
+/* Profile Sections */
+.profile-section {
+  border-bottom: 1px solid var(--primary-very-light);
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.profile-section:last-child {
+  border-bottom: none;
+}
+
+.profile-section h4 {
+  color: var(--primary-dark);
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* Form Elements */
+.form-label {
+  color: var(--text-medium);
+  font-weight: 500;
+}
+
+.form-control, .form-select {
+  border-color: #ddd;
+  padding: 0.6rem 0.75rem;
+  color: var(--text-dark);
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(62, 128, 51, 0.15);
+}
+
+/* Buttons */
+.btn-success {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-success:hover {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.btn-light {
+  background-color: #f8f9fa;
+  border-color: #ddd;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .container-fluid {
+    padding: 1rem;
+  }
+  
+  .user-avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+  
+  .profile-section {
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+} 

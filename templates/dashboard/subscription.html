@@ -1,0 +1,652 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block dashboard_content %}
+<style>
+    :root {
+        --tan-lightest: #FAF5F0;  /* Lightest tan for backgrounds */
+        --tan-lighter: #FDF9E5;   /* Cream color for cards */
+        --tan-light: #E8DDCA;     /* Light tan for borders */
+        --primary-color: #3E8033; /* Green for primary elements */
+        --secondary-color: #D4AF37; /* Gold for accents */
+    }
+    
+    .subscription-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    
+    .subscription-header h1 {
+        color: var(--primary-color);
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+    
+    .subscription-header p {
+        font-size: 1.1rem;
+        color: #555;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    .subscription-cards {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 30px;
+        margin-bottom: 50px;
+    }
+    
+    .subscription-card {
+        background-color: var(--tan-lighter);
+        border-radius: 12px;
+        border: 1px solid var(--tan-light);
+        padding: 30px;
+        width: 500px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .subscription-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    
+    .subscription-card::before {
+        content: "Best Value";
+        position: absolute;
+        top: 15px;
+        right: -35px;
+        background-color: var(--secondary-color);
+        color: white;
+        padding: 5px 40px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        transform: rotate(45deg);
+    }
+    
+    .subscription-tier {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: var(--primary-color);
+    }
+    
+    .subscription-price {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: #333;
+    }
+    
+    .subscription-price small {
+        font-size: 1rem;
+        color: #777;
+        font-weight: 500;
+    }
+    
+    .subscription-features {
+        margin-bottom: 25px;
+    }
+    
+    .feature-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
+        font-size: 0.95rem;
+    }
+    
+    .feature-item i {
+        color: var(--primary-color);
+        margin-right: 10px;
+        font-size: 1rem;
+    }
+    
+    .select-btn {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 12px 0;
+        border-radius: 6px;
+        font-weight: 600;
+        width: 100%;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    
+    .select-btn:hover {
+        background-color: #2A592A;
+    }
+    
+    .select-btn.outline {
+        background-color: transparent;
+        border: 2px solid var(--primary-color);
+        color: var(--primary-color);
+    }
+    
+    .select-btn.outline:hover {
+        background-color: rgba(62, 128, 51, 0.1);
+    }
+    
+    .select-btn.gold {
+        background-color: var(--secondary-color);
+    }
+    
+    .select-btn.gold:hover {
+        background-color: #C09B30;
+    }
+    
+    /* Payment form styles */
+    .payment-container {
+        max-width: 650px;
+        margin: 0 auto;
+        background-color: var(--tan-lighter);
+        border-radius: 12px;
+        border: 1px solid var(--tan-light);
+        padding: 30px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        display: none;
+    }
+    
+    .payment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--tan-light);
+    }
+    
+    .payment-summary {
+        display: flex;
+        padding: 15px;
+        background-color: rgba(62, 128, 51, 0.05);
+        border-radius: 8px;
+        margin-bottom: 25px;
+    }
+    
+    .payment-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        background-color: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+    }
+    
+    .payment-details h3 {
+        font-size: 1.1rem;
+        margin-bottom: 5px;
+        color: #333;
+    }
+    
+    .payment-amount {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    .payment-form label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #555;
+    }
+    
+    .form-row {
+        margin-bottom: 20px;
+    }
+    
+    .form-row-split {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .form-row-split > div {
+        flex: 1;
+    }
+    
+    input.form-control {
+        width: 100%;
+        padding: 12px 15px;
+        border: 1px solid var(--tan-light);
+        border-radius: 6px;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+    }
+    
+    input.form-control:focus {
+        border-color: var(--primary-color);
+        outline: none;
+    }
+    
+    #card-element {
+        padding: 12px 15px;
+        border: 1px solid var(--tan-light);
+        border-radius: 6px;
+        background-color: white;
+    }
+    
+    #card-element.focus {
+        border-color: var(--primary-color);
+    }
+    
+    #card-errors {
+        color: #dc3545;
+        font-size: 0.9rem;
+        margin-top: 10px;
+    }
+    
+    .form-submit-btn {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 14px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        width: 100%;
+        cursor: pointer;
+        font-size: 1rem;
+        margin-top: 10px;
+    }
+    
+    .form-submit-btn:hover {
+        background-color: #2A592A;
+    }
+    
+    .secure-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 15px;
+        color: #777;
+        font-size: 0.9rem;
+    }
+    
+    .secure-badge i {
+        margin-right: 6px;
+        color: var(--primary-color);
+    }
+    
+    .back-btn {
+        background: none;
+        border: none;
+        color: #555;
+        cursor: pointer;
+        padding: 5px 10px;
+        display: flex;
+        align-items: center;
+        font-size: 0.9rem;
+    }
+    
+    .back-btn i {
+        margin-right: 5px;
+    }
+    
+    .back-btn:hover {
+        color: var(--primary-color);
+    }
+    
+    /* Subscription benefits section */
+    .subscription-benefits {
+        margin: 60px 0;
+        text-align: center;
+    }
+    
+    .benefits-title {
+        font-size: 1.8rem;
+        color: var(--primary-color);
+        margin-bottom: 40px;
+        font-weight: 600;
+    }
+    
+    .benefits-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 30px;
+    }
+    
+    .benefit-item {
+        width: 280px;
+        text-align: center;
+    }
+    
+    .benefit-icon {
+        width: 70px;
+        height: 70px;
+        background-color: var(--tan-lighter);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 15px;
+        color: var(--primary-color);
+        font-size: 1.8rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    
+    .benefit-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #333;
+    }
+    
+    .benefit-desc {
+        color: #666;
+        line-height: 1.5;
+    }
+</style>
+
+<div class="dashboard-section" style="padding-bottom: 60px;">
+    <!-- Subscription Page Header -->
+    <div class="subscription-header">
+        <h1>Premium ConsulWealth Subscription</h1>
+        <p>Upgrade your financial planning experience with premium features designed to help you reach your investment goals faster.</p>
+    </div>
+    
+    <!-- Subscription Tier -->
+    <div class="subscription-cards">
+        <!-- Premium Tier -->
+        <div class="subscription-card">
+            <div class="subscription-tier">ConsulWealth Premium</div>
+            <div class="subscription-price">
+                $14.99<small>/month</small>
+            </div>
+            <div class="subscription-features">
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Advanced portfolio tracking & analysis</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Unlimited investment goals</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Advanced retirement planning & projections</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Weekly market insights & reports</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Advanced portfolio optimization</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Tax optimization strategies</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Priority customer support</span>
+                </div>
+            </div>
+            <button class="select-btn gold" data-plan="premium" data-amount="14.99" onclick="selectPlan('premium', '$14.99/month', 14.99)">
+                Subscribe Now
+            </button>
+        </div>
+    </div>
+    
+    <!-- Payment Form -->
+    <div class="payment-container" id="paymentContainer">
+        <div class="payment-header">
+            <button class="back-btn" onclick="backToPlans()">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+            <h2>Complete Your Subscription</h2>
+        </div>
+        
+        <div class="payment-summary">
+            <div class="payment-icon">
+                <i class="fas fa-crown"></i>
+            </div>
+            <div class="payment-details">
+                <h3 id="planName">ConsulWealth Premium</h3>
+                <div class="payment-amount" id="planPrice">$14.99/month</div>
+            </div>
+        </div>
+        
+        <div class="payment-form">
+            <form id="payment-form">
+                <div class="form-row">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" class="form-control" placeholder="John Smith" required>
+                </div>
+                
+                <div class="form-row">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="john@example.com" required>
+                </div>
+                
+                <div class="form-row">
+                    <label for="card-element">Credit or Debit Card</label>
+                    <div id="card-element">
+                        <!-- Stripe Card Element will be inserted here -->
+                    </div>
+                    <div id="card-errors" role="alert"></div>
+                </div>
+                
+                <button type="submit" class="form-submit-btn">
+                    <i class="fas fa-lock me-2"></i> Subscribe Now
+                </button>
+                
+                <div class="secure-badge">
+                    <i class="fas fa-shield-alt"></i> Your payment information is securely processed by Stripe
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Benefits Section -->
+    <div class="subscription-benefits">
+        <h2 class="benefits-title">Why Upgrade Your Membership?</h2>
+        
+        <div class="benefits-container">
+            <div class="benefit-item">
+                <div class="benefit-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3 class="benefit-title">Advanced Analytics</h3>
+                <p class="benefit-desc">Get deeper insights into your investment performance with advanced analytics and reporting tools.</p>
+            </div>
+            
+            <div class="benefit-item">
+                <div class="benefit-icon">
+                    <i class="fas fa-umbrella-beach"></i>
+                </div>
+                <h3 class="benefit-title">Retirement Mastery</h3>
+                <p class="benefit-desc">Plan your dream retirement with precision using our advanced retirement planning features.</p>
+            </div>
+            
+            <div class="benefit-item">
+                <div class="benefit-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <h3 class="benefit-title">Goal Management</h3>
+                <p class="benefit-desc">Set and track unlimited financial goals with detailed progress monitoring and recommendations.</p>
+            </div>
+            
+            <div class="benefit-item">
+                <div class="benefit-icon">
+                    <i class="fas fa-university"></i>
+                </div>
+                <h3 class="benefit-title">Tax Optimization</h3>
+                <p class="benefit-desc">Maximize your returns with advanced tax optimization strategies designed for your portfolio.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    // Stripe initialization
+    let stripe = Stripe('{{ stripe_key }}');
+    let elements = stripe.elements();
+    let currentPlan = 'premium';
+    let currentAmount = 14.99;
+    
+    // Card styling
+    let style = {
+        base: {
+            color: '#333',
+            fontFamily: 'Inter, sans-serif',
+            fontSmoothing: 'antialiased',
+            fontSize: '16px',
+            '::placeholder': {
+                color: '#aab7c4'
+            }
+        },
+        invalid: {
+            color: '#dc3545',
+            iconColor: '#dc3545'
+        }
+    };
+    
+    // Create a card Element
+    let card = elements.create('card', {style: style});
+    
+    // Mount the card Element to the DOM
+    function mountCard() {
+        // Wait until the element is ready in the DOM
+        setTimeout(function() {
+            let cardElement = document.getElementById('card-element');
+            if (cardElement) {
+                card.mount('#card-element');
+            } else {
+                console.error("Card element not found in DOM");
+            }
+        }, 100);
+    }
+    
+    // Function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Handle form submission
+    function setupForm() {
+        setTimeout(function() {
+            let form = document.getElementById('payment-form');
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    
+                    // Disable the submit button to prevent repeated clicks
+                    document.querySelector('.form-submit-btn').disabled = true;
+                    
+                    // Create a token
+                    stripe.createToken(card).then(function(result) {
+                        if (result.error) {
+                            // Show error in the form
+                            let errorElement = document.getElementById('card-errors');
+                            errorElement.textContent = result.error.message;
+                            document.querySelector('.form-submit-btn').disabled = false;
+                        } else {
+                            // Send the token to your server
+                            stripeTokenHandler(result.token);
+                        }
+                    });
+                });
+            }
+        }, 200);
+    }
+    
+    // Function to select plan and show payment form
+    function selectPlan(planId, planName, amount) {
+        // Store the selected plan and amount
+        currentPlan = planId;
+        currentAmount = amount;
+        
+        // Update payment form details
+        document.getElementById('planName').textContent = planName.split('/')[0] + ' Plan';
+        document.getElementById('planPrice').textContent = planName;
+        
+        // Show payment container
+        document.getElementById('paymentContainer').style.display = 'block';
+        
+        // Scroll to payment form
+        document.getElementById('paymentContainer').scrollIntoView({
+            behavior: 'smooth'
+        });
+        
+        // Set up Stripe elements
+        mountCard();
+        setupForm();
+    }
+    
+    // Function to go back to plan selection
+    function backToPlans() {
+        document.getElementById('paymentContainer').style.display = 'none';
+    }
+    
+    // Function to handle the token
+    function stripeTokenHandler(token) {
+        // Create form data
+        const data = {
+            'stripeToken': token.id,
+            'plan': currentPlan,
+            'amount': currentAmount
+        };
+        
+        // Send to your backend endpoint
+        fetch('{% url "subscriptions:create_subscription" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showProcessingSuccess();
+            } else {
+                document.getElementById('card-errors').textContent = data.error;
+                document.querySelector('.form-submit-btn').disabled = false;
+            }
+        })
+        .catch(error => {
+            document.getElementById('card-errors').textContent = 'An error occurred. Please try again.';
+            document.querySelector('.form-submit-btn').disabled = false;
+        });
+    }
+    
+    // Function to show processing success
+    function showProcessingSuccess() {
+        let form = document.getElementById('payment-form');
+        form.innerHTML = `
+            <div style="text-align: center; padding: 30px 0;">
+                <i class="fas fa-check-circle" style="font-size: 60px; color: var(--primary-color); margin-bottom: 20px;"></i>
+                <h2 style="margin-bottom: 15px; color: #333;">Payment Successful!</h2>
+                <p style="color: #666; margin-bottom: 25px;">Thank you for upgrading your subscription. Your new plan benefits are now active.</p>
+                <a href="{% url 'dashboard:dashboard' %}" class="select-btn" style="display: inline-block; text-decoration: none; padding: 12px 25px;">
+                    Return to Dashboard
+                </a>
+            </div>
+        `;
+    }
+</script>
+{% endblock %} 

@@ -1,0 +1,975 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% load dashboard_filters %}
+
+{% block dashboard_content %}
+<style>
+    /* Reset any padding/margin constraints */
+    .dashboard-section {
+        padding: 0;
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    /* Green header styling */
+    .budget-overview-header {
+        background-color: var(--primary-dark);
+        color: white;
+        padding: 10px 20px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .budget-overview-header h3 {
+        margin: 0;
+        color: white !important;
+        font-size: 1.2rem;
+    }
+    
+    .budget-overview-header i {
+        margin-right: 10px;
+    }
+    
+    /* Budget summary section */
+    .monthly-summary {
+        background-color: var(--white);
+        margin-bottom: 10px;
+        padding: 15px;
+        border-radius: 0;
+    }
+    
+    .budget-stat {
+        display: flex;
+        flex-direction: column;
+        border-left: 3px solid var(--primary-medium);
+        padding-left: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+        color: #888;
+        text-transform: uppercase;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary-dark);
+    }
+    
+    .stat-detail {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    /* Charts and data section */
+    .chart-container {
+        min-height: 300px;
+        position: relative;
+    }
+    
+    /* Reduce size of pie chart container */
+    .pie-chart-container {
+        width: 66%;
+        margin: 0 auto;
+    }
+    
+    /* Budget category items */
+    .budget-category-item {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border: 1px solid rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+    }
+    
+    .budget-category-item:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    
+    .budget-slider {
+        width: 100%;
+    }
+    
+    .progress-bar-custom {
+        height: 8px;
+        margin-top: 8px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+    }
+    
+    /* Remove card border radius for more screen space */
+    .dashboard-card {
+        border-radius: 0;
+        margin-bottom: 0;
+        box-shadow: none;
+        border: none;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    /* Budget form styles */
+    .budget-form {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        height: 100%;
+    }
+    
+    .category-budget-item {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: white;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    /* Budget form styles - compact version */
+    .budget-form {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 8px;
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    .category-budget-item {
+        margin-bottom: 8px;
+        padding: 10px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.2s ease;
+    }
+    
+    .category-budget-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    /* Equal height containers */
+    .budget-section-container {
+        min-height: 450px;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Budget progress container */
+    #budgetProgressContainer {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    /* Updated color scheme and alignment */
+    .budget-row {
+        display: flex;
+        width: 100%;
+        margin-bottom: 15px;
+    }
+    
+    .budget-cell {
+        flex: 1;
+        padding: 0 10px;
+    }
+    
+    .budget-category-name {
+        font-weight: 600;
+        color: var(--primary-dark);
+        margin-bottom: 3px;
+    }
+    
+    .budget-input-container {
+        background-color: white;
+        border-radius: 6px;
+        padding: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .budget-progress-container {
+        background-color: white;
+        border-radius: 6px;
+        padding: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .budget-save-button {
+        background-color: var(--primary-medium);
+        border-color: var(--primary-medium);
+    }
+    
+    .budget-save-button:hover {
+        background-color: var(--primary-dark);
+        border-color: var(--primary-dark);
+    }
+    
+    /* Current spending badge */
+    .current-spending {
+        background-color: var(--primary-light) !important;
+        color: var(--primary-dark) !important;
+    }
+    
+    /* Budget category items - compact version */
+    .budget-card-compact {
+        background-color: white;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        transition: all 0.2s ease;
+    }
+    
+    .budget-card-compact:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .category-icon-small {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+    
+    .bg-success-light {
+        background-color: rgba(62, 128, 51, 0.2);
+    }
+    
+    .bg-warning-light {
+        background-color: rgba(212, 175, 55, 0.2);
+    }
+    
+    .bg-info-light {
+        background-color: rgba(95, 165, 84, 0.2);
+    }
+    
+    .bg-danger-light {
+        background-color: rgba(220, 53, 69, 0.2);
+    }
+    
+    .text-success {
+        color: var(--primary) !important;
+    }
+    
+    .text-warning {
+        color: #D4AF37 !important;
+    }
+    
+    .text-danger {
+        color: #dc3545 !important;
+    }
+    
+    .bg-primary-light {
+        background-color: rgba(74, 189, 136, 0.2);
+    }
+    
+    .current-spending {
+        background-color: rgba(74, 189, 136, 0.1) !important;
+        color: var(--primary) !important;
+        font-size: 0.8rem;
+    }
+</style>
+
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-money-bill-wave"></i> Budget Overview
+    </h2>
+    
+    {% if not has_transactions %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i> No transaction data for this month yet. Connect more accounts or check back later.
+    </div>
+    {% endif %}
+    
+    <!-- Budget Overview Header -->
+    <div class="budget-overview-header">
+        <i class="fas fa-wallet"></i>
+        <h3>Budget Overview - {{ current_month }}</h3>
+        
+        <!-- Month selector -->
+        <div class="ms-auto">
+            <div class="d-flex align-items-center">
+                <label for="monthSelector" class="text-white me-2 mb-0">View:</label>
+                <select id="monthSelector" class="form-select form-select-sm">
+                    <!-- Month options will be populated by JavaScript -->
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monthly Financial Summary -->
+    <div class="monthly-summary">
+        <h5>Monthly Financial Summary</h5>
+        
+        <div class="row mt-4">
+            <div class="col-md-3">
+                <div class="budget-stat">
+                    <span class="stat-label">MONTHLY INCOME</span>
+                    <span class="stat-value">${{ monthly_income|floatformat:2 }}</span>
+                    <span class="stat-detail">
+                        <i class="fas fa-arrow-up text-success"></i> Total Inflow
+                    </span>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="budget-stat">
+                    <span class="stat-label">MONTHLY SPENDING</span>
+                    <span class="stat-value">${{ monthly_spending|floatformat:2 }}</span>
+                    <span class="stat-detail">
+                        <i class="fas fa-arrow-down text-danger"></i> Total Outflow
+                        {% if transfer_amount %}
+                        <br><small class="text-muted">(includes ${{ transfer_amount|floatformat:2 }} in transfers)</small>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="budget-stat">
+                    <span class="stat-label">NET SAVINGS</span>
+                    <span class="stat-value">${{ net_savings|floatformat:2 }}</span>
+                    <span class="stat-detail">
+                        <i class="fas fa-plus-circle {% if net_savings >= 0 %}text-success{% else %}text-danger{% endif %}"></i> 
+                        {% if net_savings >= 0 %}Surplus{% else %}Deficit{% endif %}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="budget-stat">
+                    <span class="stat-label">SAVINGS RATE</span>
+                    <span class="stat-value">{{ savings_rate }}%</span>
+                    <span class="stat-detail">
+                        <i class="fas fa-percentage text-primary"></i> Of Monthly Income
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Savings Projection Chart -->
+        <div class="chart-container mt-4">
+            <h6 class="mb-3">Savings Trend & Projection</h6>
+            <canvas id="savingsProjectionChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Budget Management -->
+    <div class="dashboard-card">
+        <div class="card-title">
+            <i class="fas fa-chart-pie text-primary mr-2"></i> Budget Management
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="budget-section-container">
+                    <h6>Budget Manager</h6>
+                    <div class="budget-form">
+                        <form id="categoryBudgetForm">
+                            <div id="categoryBudgetItems">
+                                <!-- Dynamic budget items will be populated here via JavaScript -->
+                            </div>
+                            
+                            <div class="d-grid mt-2">
+                                <button type="button" id="saveBudgetButton" class="btn btn-sm btn-primary budget-save-button">
+                                    <i class="fas fa-save me-1"></i> Save Budget Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="budget-section-container">
+                    <h6>Budget Progress</h6>
+                    <div class="p-3" id="budgetProgressContainer">
+                        <div class="alert alert-info text-center" id="noBudgetsMessage">
+                            <i class="fas fa-info-circle me-2"></i> Set budget limits to track your spending against your budget goals.
+                        </div>
+                        
+                        <!-- Budget progress items will be displayed here -->
+                        <div id="budgetProgressItems" class="d-none">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Configure color schemes for charts - updated to match website scheme
+        const brandColors = {
+            primary: '#4ABD88',        // Main green
+            secondary: '#23856D',      // Dark green
+            accent: '#2FB5FC',         // Blue
+            dark: '#1E3A5F',           // Dark blue
+            light: '#9ED5B3',          // Light green
+            danger: '#F64747',         // Red
+            warning: '#F2994A',        // Orange
+            info: '#56CCF2'            // Light blue
+        };
+        
+        // Get icon for category
+        function getCategoryIcon(category) {
+            if (category.includes('Food') || category.includes('Dining')) {
+                return 'fa-utensils';
+            } else if (category.includes('Transport')) {
+                return 'fa-car';
+            } else if (category.includes('Bill') || category.includes('Utilit')) {
+                return 'fa-file-invoice-dollar';
+            } else if (category.includes('Entertain')) {
+                return 'fa-film';
+            } else if (category.includes('Home') || category.includes('Rent')) {
+                return 'fa-home';
+            } else if (category.includes('Health') || category.includes('Medical')) {
+                return 'fa-heartbeat';
+            } else if (category.includes('Education')) {
+                return 'fa-graduation-cap';
+            } else if (category.includes('Travel')) {
+                return 'fa-plane';
+            } else {
+                return 'fa-shopping-bag';
+            }
+        }
+        
+        // Update to portfolio colors
+        const portfolioColors = {
+            greenDark: '#3E8033',    // Main green
+            greenMedium: '#5FA554',  // Medium green
+            greenLight: '#8CC63F',   // Light green
+            greenDarkest: '#2A592A', // Dark green
+            goldAccent: '#D4AF37',   // Gold accent
+            brownAccent: '#A3794E',  // Brown accent
+            oliveAccent: '#6B8E23',  // Olive accent
+            purpleAccent: '#9370DB', // Purple accent
+            blueAccent: '#4682B4',   // Steel blue
+            slateGray: '#708090',    // Slate gray
+            peru: '#CD853F',         // Peru brown
+            tanLight: '#D2B48C'      // Light tan
+        };
+        
+        // Create color array for pie chart - improved harmony
+        const backgroundColors = [
+            portfolioColors.greenDark,       // Dark green
+            portfolioColors.greenMedium,     // Medium green
+            portfolioColors.brownAccent,     // Brown
+            portfolioColors.goldAccent,      // Gold
+            portfolioColors.oliveAccent,     // Olive
+            portfolioColors.peru,            // Peru
+            portfolioColors.slateGray,       // Slate gray
+            portfolioColors.tanLight,        // Light tan
+            portfolioColors.purpleAccent,    // Purple
+            portfolioColors.blueAccent       // Blue
+        ];
+        
+        const statusColors = {
+            success: portfolioColors.greenMedium,
+            warning: portfolioColors.goldAccent,
+            danger: portfolioColors.brownAccent
+        };
+        
+        // Safely parse Django template variables
+        function safeJSONParse(jsonString, defaultValue) {
+            try {
+                return JSON.parse(jsonString);
+            } catch (e) {
+                console.warn("Error parsing JSON:", e);
+                return defaultValue;
+            }
+        }
+        
+        // Get Django template variables with fallbacks
+        const categoryLabelsJSON = '{{ category_labels|default:"[]"|escapejs }}';
+        const categoryDataJSON = '{{ category_data|default:"[]"|escapejs }}';
+        const pastMonthsDataJSON = '{{ past_months_data|default:"[]"|escapejs }}';
+        const netSavings = parseFloat('{{ net_savings|default:0|escapejs }}');
+        const monthlySpending = parseFloat('{{ monthly_spending|default:0|escapejs }}');
+        
+        // Parse JSON values
+        const categoryLabels = safeJSONParse(categoryLabelsJSON, []);
+        const categoryData = safeJSONParse(categoryDataJSON, []);
+        const pastMonthsData = safeJSONParse(pastMonthsDataJSON, []);
+        
+        // Pre-process categories - handle Transfers better
+        const processedLabels = [];
+        const processedData = [];
+        
+        for (let i = 0; i < categoryLabels.length; i++) {
+            const label = categoryLabels[i];
+            
+            // Skip 'Transfer' category for the pie chart
+            if (label === 'Transfer') {
+                continue;
+            }
+            
+            // Format category names for better readability
+            let displayLabel = label;
+            if (label === 'Payment') displayLabel = 'Bills & Payments';
+            if (label === 'Food and Drink') displayLabel = 'Food & Dining';
+            
+            processedLabels.push(displayLabel);
+            processedData.push(categoryData[i]);
+        }
+        
+        // Populate budget setting form based on spending categories
+        const categoryBudgetItems = document.getElementById('categoryBudgetItems');
+        const progressItems = document.getElementById('budgetProgressItems');
+        
+        // Current month being viewed
+        const currentMonthName = '{{ current_month }}'; // e.g., "May 2023"
+        
+        // Get stored budget values from localStorage if available
+        // Store budgets by month to allow different budgets for different months
+        const budgetStorageKey = `categoryBudgets_${currentMonthName.replace(/\s+/g, '_')}`;
+        const storedBudgets = JSON.parse(localStorage.getItem(budgetStorageKey) || '{}');
+        
+        // For backward compatibility, also check the old storage key
+        const oldStoredBudgets = JSON.parse(localStorage.getItem('categoryBudgets') || '{}');
+        
+        if (processedLabels && processedLabels.length > 0) {
+            // Create budget input fields for each category
+            processedLabels.forEach((category, index) => {
+                const amount = processedData[index];
+                
+                // First check month-specific budget, then fall back to the global budget, 
+                // or default to 90% of current spending
+                const storedBudget = storedBudgets[category] || oldStoredBudgets[category] || Math.ceil(amount * 0.9);
+                
+                const budgetItemHtml = `
+                    <div class="category-budget-item" id="budget-input-${index}" data-category="${category}">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center">
+                                <div class="category-icon-small bg-primary-light me-2">
+                                    <i class="fas ${getCategoryIcon(category)}"></i>
+                                </div>
+                                <label for="budget-${index}" class="mb-0 h6">${category}</label>
+                            </div>
+                            <span class="badge current-spending">$${amount.toFixed(2)}</span>
+                        </div>
+                        <div class="input-group input-group-sm mt-1">
+                            <span class="input-group-text">$</span>
+                            <input type="number" 
+                                   class="form-control form-control-sm budget-input" 
+                                   id="budget-${index}" 
+                                   name="budget-${category}" 
+                                   value="${storedBudget}"
+                                   min="0" 
+                                   step="10"
+                                   data-category="${category}"
+                                   data-current="${amount.toFixed(2)}">
+                        </div>
+                    </div>
+                `;
+                
+                categoryBudgetItems.innerHTML += budgetItemHtml;
+            });
+        } else {
+            categoryBudgetItems.innerHTML = '<div class="alert alert-warning">No spending categories found to set budgets for.</div>';
+        }
+        
+        // Function to save budget values
+        document.getElementById('saveBudgetButton').addEventListener('click', function() {
+            const budgetInputs = document.querySelectorAll('.budget-input');
+            const budgets = {};
+            
+            budgetInputs.forEach(input => {
+                const category = input.dataset.category;
+                const value = parseFloat(input.value);
+                budgets[category] = value;
+            });
+            
+            // Save to localStorage with the month-specific key
+            localStorage.setItem(budgetStorageKey, JSON.stringify(budgets));
+            
+            // Update the budget progress display
+            updateBudgetProgress(budgets);
+            
+            // Show success message
+            alert(`Budget settings saved for ${currentMonthName}!`);
+        });
+        
+        // Function to update budget progress
+        function updateBudgetProgress(budgets) {
+            const progressContainer = document.getElementById('budgetProgressContainer');
+            const progressItems = document.getElementById('budgetProgressItems');
+            const noBudgetsMessage = document.getElementById('noBudgetsMessage');
+            
+            // Clear previous items
+            progressItems.innerHTML = '';
+            
+            // Check if we have any budgets
+            if (Object.keys(budgets).length === 0) {
+                progressItems.classList.add('d-none');
+                noBudgetsMessage.classList.remove('d-none');
+                return;
+            }
+            
+            // Show progress items
+            progressItems.classList.remove('d-none');
+            noBudgetsMessage.classList.add('d-none');
+            
+            // Create progress bars for each category in the same order as the inputs
+            const categoryInputs = document.querySelectorAll('.category-budget-item');
+            
+            categoryInputs.forEach((inputEl, index) => {
+                const category = inputEl.dataset.category;
+                if (!category) return;
+                
+                const amount = processedData[processedLabels.indexOf(category)];
+                const budget = budgets[category] || 0;
+                
+                if (budget <= 0) return; // Skip categories with no budget
+                
+                const percentage = Math.min(Math.round((amount / budget) * 100), 100);
+                let statusClass = 'success';
+                let statusText = 'On Track';
+                
+                if (percentage > 90) {
+                    statusClass = 'danger';
+                    statusText = 'Over Budget';
+                } else if (percentage > 75) {
+                    statusClass = 'warning';
+                    statusText = 'At Risk';
+                }
+                
+                // Get appropriate icon for category
+                let categoryIcon = 'fa-shopping-bag';
+                if (category.includes('Food') || category.includes('Dining')) {
+                    categoryIcon = 'fa-utensils';
+                } else if (category.includes('Transport')) {
+                    categoryIcon = 'fa-car';
+                } else if (category.includes('Bill') || category.includes('Utilit')) {
+                    categoryIcon = 'fa-file-invoice-dollar';
+                } else if (category.includes('Entertain')) {
+                    categoryIcon = 'fa-film';
+                } else if (category.includes('Home') || category.includes('Rent')) {
+                    categoryIcon = 'fa-home';
+                } else if (category.includes('Health') || category.includes('Medical')) {
+                    categoryIcon = 'fa-heartbeat';
+                } else if (category.includes('Education')) {
+                    categoryIcon = 'fa-graduation-cap';
+                } else if (category.includes('Travel')) {
+                    categoryIcon = 'fa-plane';
+                }
+                
+                const progressHtml = `
+                    <div class="budget-card-compact" id="budget-progress-${index}" data-category="${category}">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center">
+                                <div class="category-icon-small bg-${statusClass}-light me-2">
+                                    <i class="fas ${categoryIcon}"></i>
+                                </div>
+                                <h6 class="mb-0">${category}</h6>
+                            </div>
+                            <span class="badge bg-${statusClass}-light text-${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-${statusClass}" 
+                                 role="progressbar" 
+                                 style="width: ${percentage}%" 
+                                 aria-valuenow="${percentage}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1 small">
+                            <span class="text-muted">$${amount.toFixed(2)} / $${budget.toFixed(2)}</span>
+                            <span class="fw-bold">${percentage}%</span>
+                        </div>
+                    </div>
+                `;
+                
+                progressItems.innerHTML += progressHtml;
+            });
+            
+            // Ensure same height for corresponding items
+            setTimeout(() => {
+                categoryInputs.forEach((inputEl, idx) => {
+                    const progressEl = document.getElementById(`budget-progress-${idx}`);
+                    if (inputEl && progressEl) {
+                        // We don't need to set exact height anymore with the new format
+                        // but we still want to make sure they're aligned properly
+                    }
+                });
+            }, 100);
+        }
+        
+        // Initialize budget progress from stored data
+        updateBudgetProgress(storedBudgets);
+        
+        // Set up savings projection chart (line chart) with improved calculation
+        const savingsProjectionChart = new Chart(
+            document.getElementById('savingsProjectionChart').getContext('2d'),
+            {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Historical Savings',
+                        data: [],
+                        backgroundColor: 'rgba(74, 189, 136, 0.2)',
+                        borderColor: brandColors.primary,
+                        borderWidth: 2,
+                        pointBackgroundColor: brandColors.secondary,
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Projected Savings',
+                        data: [],
+                        backgroundColor: 'rgba(47, 181, 252, 0.1)',
+                        borderColor: brandColors.accent,
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.formattedValue;
+                                    return `${label}: $${value}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        );
+        
+        // Update the savings projection chart with actual data
+        if (pastMonthsData && pastMonthsData.length > 0) {
+            // Historical data setup
+            const historicalLabels = pastMonthsData.map(item => item.month);
+            const historicalValues = pastMonthsData.map(item => item.net);
+            
+            // Calculate projection based on average growth rate of recent months
+            const projectionMonths = 6;
+            const projectionLabels = [];
+            const projectionValues = [];
+            
+            // Starting point for projection
+            let projectionBase = netSavings;
+            
+            // Calculate average monthly change if we have enough data
+            let avgMonthlyChange = 0;
+            
+            if (historicalValues.length >= 3) {
+                let changes = [];
+                for (let i = 1; i < historicalValues.length; i++) {
+                    changes.push(historicalValues[i] - historicalValues[i-1]);
+                }
+                
+                // Use more recent months with higher weight
+                const weightedSum = changes.reduce((sum, change, idx) => {
+                    const weight = (idx + 1) / changes.reduce((s, _, i) => s + i + 1, 0);
+                    return sum + change * weight;
+                }, 0);
+                
+                avgMonthlyChange = weightedSum;
+            }
+            
+            // Limit extreme projections
+            if (Math.abs(avgMonthlyChange) > netSavings * 0.5) {
+                avgMonthlyChange = netSavings * 0.5 * Math.sign(avgMonthlyChange);
+            }
+            
+            // Generate projection months - with more reasonable growth
+            const lastMonth = new Date();
+            for (let i = 1; i <= projectionMonths; i++) {
+                const projMonth = new Date(lastMonth);
+                projMonth.setMonth(lastMonth.getMonth() + i);
+                projectionLabels.push(projMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+                
+                // Apply diminishing growth rate for more realistic projection
+                const growthRate = 1.0 - (0.1 * i);
+                projectionBase += avgMonthlyChange * growthRate;
+                projectionValues.push(Math.max(projectionBase, -monthlySpending)); // Don't go below negative monthly spending
+            }
+            
+            // Update chart data
+            savingsProjectionChart.data.labels = [...historicalLabels, ...projectionLabels];
+            savingsProjectionChart.data.datasets[0].data = [...historicalValues, null];
+            savingsProjectionChart.data.datasets[1].data = [
+                ...Array(historicalValues.length).fill(null), 
+                historicalValues[historicalValues.length - 1], 
+                ...projectionValues
+            ];
+            
+            savingsProjectionChart.update();
+        } else {
+            // If no historical data, just use current month's savings for projection
+            const labels = ['Current Month', 'Month 2', 'Month 3', 'Month 4', 'Month 5', 'Month 6'];
+            const projectionData = [netSavings];
+            
+            // Create a modest growth projection
+            for (let i = 1; i < 6; i++) {
+                // Modest 3% monthly improvement
+                projectionData.push(Math.round(netSavings * (1 + (0.03 * i))));
+            }
+            
+            savingsProjectionChart.data.labels = labels;
+            savingsProjectionChart.data.datasets[0].data = [netSavings];
+            savingsProjectionChart.data.datasets[1].data = projectionData;
+            savingsProjectionChart.update();
+        }
+    });
+
+    // Month selection handler
+    document.addEventListener('DOMContentLoaded', function() {
+        const monthSelector = document.getElementById('monthSelector');
+        
+        if (monthSelector) {
+            // Get current date
+            const now = new Date();
+            
+            // Clear any existing options
+            monthSelector.innerHTML = '';
+            
+            // Create options for current month and 6 previous months
+            for (let i = 0; i >= -6; i--) {
+                const monthDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                
+                const option = document.createElement('option');
+                option.value = i === 0 ? 'current' : i.toString(); // Use 'current' for current month
+                option.textContent = monthName;
+                
+                // Check if this is the currently selected month
+                const urlParams = new URLSearchParams(window.location.search);
+                const monthParam = urlParams.get('month') || 'current';
+                
+                if ((i === 0 && monthParam === 'current') || i.toString() === monthParam) {
+                    option.selected = true;
+                }
+                
+                monthSelector.appendChild(option);
+            }
+            
+            // Add change event listener
+            monthSelector.addEventListener('change', function() {
+                const selectedMonth = this.value;
+                
+                // Show loading indicator
+                const loadingHTML = `
+                    <div id="loadingIndicator" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                         background-color: rgba(255,255,255,0.7); z-index: 9999; display: flex; 
+                         justify-content: center; align-items: center;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', loadingHTML);
+                
+                // Redirect to the budget page with the selected month parameter
+                window.location.href = `/dashboard/budgeting/?month=${selectedMonth}`;
+            });
+        }
+    });
+</script>
+
+<!-- Debug Tools Section -->
+<div id="debugTools" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fas fa-tools me-2"></i>Budget Debug Tools</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> <strong>Budget calculations are based on transaction data.</strong> To reset or fix budget data, use these tools.
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="button" id="clearBudgetsButton" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-2"></i> Clear Budget Settings for <span id="currentMonthDisplay">{{ current_month }}</span>
+                    </button>
+                    
+                    <button type="button" id="resetToDefaultsButton" class="btn btn-outline-primary">
+                        <i class="fas fa-sync me-2"></i> Reset to Default Budget Values
+                    </button>
+                    
+                    <button type="button" id="clearAllBudgetsButton" class="btn btn-outline-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Clear All Saved Budget Settings (All Months)
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Debug tools functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get the current month name from the template
+        const currentMonthName = '{{ current_month }}';
+        
+        // Update the display of the current month in the modal
+        document.getElementById('currentMonthDisplay').textContent = currentMonthName;
+        
+        // Construct the month-specific storage key
+        const monthStorageKey = `categoryBudgets_${currentMonthName.replace(/\s+/g, '_')}`;
+        
+        // Clear budgets button for current month
+        document.getElementById('clearBudgetsButton').addEventListener('click', function() {
+            if (confirm(`Are you sure you want to clear all budget settings for ${currentMonthName}?`)) {
+                localStorage.removeItem(monthStorageKey);
+                alert(`Budget settings for ${currentMonthName} cleared. Refresh the page to see changes.`);
+            }
+        });
+        
+        // Reset to defaults button
+        document.getElementById('resetToDefaultsButton').addEventListener('click', function() {
+            if (confirm(`Reset to default budget values based on your spending for ${currentMonthName}?`)) {
+                // This will trigger the page to recalculate defaults on next load
+                localStorage.removeItem(monthStorageKey);
+                location.reload();
+            }
+        });
+        
+        // Clear ALL budgets button (all months)
+        document.getElementById('clearAllBudgetsButton').addEventListener('click', function() {
+            if (confirm('WARNING: Are you absolutely sure you want to clear ALL budget settings for ALL months? This cannot be undone.')) {
+                // Find all budget-related keys in localStorage
+                Object.keys(localStorage).forEach(key => {
+                    if (key === 'categoryBudgets' || key.startsWith('categoryBudgets_')) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                alert('All budget settings for all months have been cleared. Refresh the page to see changes.');
+            }
+        });
+    });
+</script>
+{% endblock %} 

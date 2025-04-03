@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Connect Bank Accounts - ConsulWealth{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<style>
+    .bank-card {
+        border-radius: 12px;
+        border: 1px solid #e0e0e0;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+        background-color: #fff;
+    }
+    .bank-card:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    .bank-logo {
+        width: 50px;
+        height: 50px;
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+    .bank-logo i {
+        font-size: 1.5rem;
+        color: #0d6efd;
+    }
+    .bank-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+    }
+    .status-active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .status-needs-refresh {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .bank-actions {
+        margin-top: 1rem;
+    }
+    .last-update {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 0.5rem;
+    }
+    .plaid-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .connection-status {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    .connection-status.connected {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+    .connection-status.not-connected {
+        background-color: #f8f9fa;
+        border: 1px solid #e0e0e0;
+    }
+    .refresh-schedule {
+        padding: 0.75rem;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    .refresh-info {
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container-fluid py-4">
+    <div class="plaid-container">
+        <h1 class="mb-4"><i class="fas fa-university me-2"></i> Connect Bank Accounts</h1>
+        
+        <div class="mb-4">
+            <a href="{% url 'dashboard:dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Return to Dashboard
+            </a>
+        </div>
+        
+        <div class="connection-status {% if is_connected %}connected{% else %}not-connected{% endif %}">
+            {% if is_connected %}
+                <h5><i class="fas fa-check-circle me-2"></i> Your accounts are connected</h5>
+                <p>You have {{ plaid_status.accounts_count }} account{{ plaid_status.accounts_count|pluralize }} connected from {{ plaid_status.institutions|length }} institution{{ plaid_status.institutions|length|pluralize }}.</p>
+                <div class="last-update">
+                    Last updated: {% if plaid_status.last_update %}{{ plaid_status.last_update|date:"F j, Y, g:i a" }}{% else %}N/A{% endif %}
+                </div>
+            {% else %}
+                <h5><i class="fas fa-info-circle me-2"></i> No accounts connected</h5>
+                <p>Connect your bank accounts to unlock personalized financial insights and budgeting tools.</p>
+            {% endif %}
+        </div>
+        
+        {% if is_connected %}
+            <!-- Update Schedule Card removed -->
+        {% endif %}
+        
+        <div class="d-grid gap-2 mb-4">
+            <button id="plaidLinkButton" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus-circle me-2"></i>{{ is_connected|yesno:"Add Another Bank,Connect Your First Bank" }}
+            </button>
+        </div>
+        
+        {% if plaid_status.institutions %}
+            <h4 class="mt-4 mb-3">Connected Institutions</h4>
+            
+            {% for institution in plaid_status.institutions %}
+                <div class="bank-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="d-flex">
+                            <div class="bank-logo">
+                                <i class="fas fa-university"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-1">{{ institution.name }}</h5>
+                                <span class="bank-status {% if institution.connection_status == 'active' %}status-active{% else %}status-needs-refresh{% endif %}">
+                                    {{ institution.connection_status|title }}
+                                </span>
+                                <div class="last-update">
+                                    Last updated: {% if institution.last_update %}{{ institution.last_update|date:"F j, Y, g:i a" }}{% else %}N/A{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light" type="button" id="dropdownMenuButton-{{ institution.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton-{{ institution.id }}">
+                                <li><a class="dropdown-item refresh-link" href="#" data-item-id="{{ institution.id }}" data-refresh-type="soft">Refresh Data</a></li>
+                                <li><a class="dropdown-item reconnect-link" href="#" data-item-id="{{ institution.id }}">Reconnect Account</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="bank-actions">
+                        <button class="btn btn-outline-primary btn-sm refresh-button" data-item-id="{{ institution.id }}" data-refresh-type="soft">
+                            <i class="fas fa-sync-alt me-1"></i> Refresh Data
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm ms-2 reconnect-button" data-item-id="{{ institution.id }}">
+                            <i class="fas fa-link me-1"></i> Reconnect
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to get CSRF token from cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Initialize Plaid Link button
+        const plaidLinkButton = document.getElementById('plaidLinkButton');
+        const refreshButtons = document.querySelectorAll('.refresh-button');
+        const reconnectButtons = document.querySelectorAll('.reconnect-button');
+        const refreshLinks = document.querySelectorAll('.refresh-link');
+        const reconnectLinks = document.querySelectorAll('.reconnect-link');
+        
+        // Function to create and open Plaid Link
+        function createAndOpenLink(options = {}) {
+            // Show loading state
+            const originalButtonText = plaidLinkButton.innerHTML;
+            plaidLinkButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
+            plaidLinkButton.disabled = true;
+            
+            // Add a status message container if it doesn't exist
+            if (!document.getElementById('plaid-status-message')) {
+                const statusDiv = document.createElement('div');
+                statusDiv.id = 'plaid-status-message';
+                statusDiv.className = 'alert mt-3';
+                statusDiv.style.display = 'none';
+                document.querySelector('.d-grid.gap-2.mb-4').appendChild(statusDiv);
+            }
+            
+            const statusMessage = document.getElementById('plaid-status-message');
+            
+            // Call the server to get a link token
+            fetch('{% url "dashboard:create_link_token" %}' + (options.queryParams || ''))
+                .then(response => {
+                    // Check for non-200 responses and handle them
+                    if (!response.ok) {
+                        statusMessage.className = 'alert alert-danger mt-3';
+                        statusMessage.style.display = 'block';
+                        statusMessage.innerHTML = `<strong>Error ${response.status}:</strong> Server returned an error`;
+                        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.link_token) {
+                        // Show success status
+                        statusMessage.className = 'alert alert-info mt-3';
+                        statusMessage.style.display = 'block';
+                        statusMessage.innerHTML = '<strong>Success:</strong> Initializing Plaid Link...';
+                        
+                        // Initialize Plaid Link with the token
+                        const handler = Plaid.create({
+                            token: data.link_token,
+                            onSuccess: function(public_token, metadata) {
+                                // Show processing status
+                                statusMessage.className = 'alert alert-info mt-3';
+                                statusMessage.innerHTML = '<strong>Processing:</strong> Connecting your bank account...';
+                                
+                                // Get CSRF token
+                                const csrftoken = getCookie('csrftoken');
+                                
+                                // Send the public token to the server
+                                const payload = {
+                                    public_token: public_token
+                                };
+                                
+                                if (options.is_reconnect) {
+                                    payload.is_reconnect = 'true';
+                                    payload.item_id = options.item_id;
+                                }
+                                
+                                fetch('{% url "dashboard:exchange_public_token" %}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': csrftoken  // Add CSRF token to headers
+                                    },
+                                    body: JSON.stringify(payload)
+                                })
+                                .then(response => {
+                                    if (!response.ok) {
+                                        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                                    }
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    if (data.success) {
+                                        // Show success message
+                                        statusMessage.className = 'alert alert-success mt-3';
+                                        statusMessage.innerHTML = '<strong>Success!</strong> Successfully connected your bank account!';
+                                        
+                                        // Reload after a brief delay
+                                        setTimeout(() => {
+                                            window.location.reload();
+                                        }, 1500);
+                                    } else {
+                                        statusMessage.className = 'alert alert-danger mt-3';
+                                        statusMessage.innerHTML = '<strong>Error:</strong> ' + (data.error || 'Unknown error');
+                                        
+                                        // Reset button state
+                                        plaidLinkButton.innerHTML = originalButtonText;
+                                        plaidLinkButton.disabled = false;
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error exchanging token:', error);
+                                    statusMessage.className = 'alert alert-danger mt-3';
+                                    statusMessage.innerHTML = '<strong>Error:</strong> ' + error.message;
+                                    
+                                    // Reset button state
+                                    plaidLinkButton.innerHTML = originalButtonText;
+                                    plaidLinkButton.disabled = false;
+                                });
+                            },
+                            onExit: function(err, metadata) {
+                                // Reset button state
+                                plaidLinkButton.innerHTML = originalButtonText;
+                                plaidLinkButton.disabled = false;
+                                
+                                if (err) {
+                                    console.error('Plaid Link error:', err);
+                                    statusMessage.className = 'alert alert-warning mt-3';
+                                    statusMessage.innerHTML = '<strong>Warning:</strong> ' + err.error_message || 'Plaid Link exited with an error';
+                                } else {
+                                    statusMessage.className = 'alert alert-info mt-3';
+                                    statusMessage.innerHTML = '<strong>Info:</strong> Bank connection was canceled';
+                                }
+                            },
+                            onLoad: function() {
+                                statusMessage.className = 'alert alert-info mt-3';
+                                statusMessage.innerHTML = '<strong>Ready:</strong> Plaid Link loaded successfully';
+                            },
+                            onEvent: function(eventName, metadata) {
+                                console.log('Plaid event:', eventName, metadata);
+                            }
+                        });
+                        
+                        // Open Plaid Link
+                        handler.open();
+                    } else {
+                        // Show error
+                        statusMessage.className = 'alert alert-danger mt-3';
+                        statusMessage.style.display = 'block';
+                        statusMessage.innerHTML = '<strong>Error:</strong> ' + (data.error || 'Failed to create link token');
+                        
+                        // Reset button state
+                        plaidLinkButton.innerHTML = originalButtonText;
+                        plaidLinkButton.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error getting link token:', error);
+                    statusMessage.className = 'alert alert-danger mt-3';
+                    statusMessage.style.display = 'block';
+                    statusMessage.innerHTML = '<strong>Error:</strong> ' + error.message;
+                    
+                    // Reset button state
+                    plaidLinkButton.innerHTML = originalButtonText;
+                    plaidLinkButton.disabled = false;
+                });
+        }
+        
+        // Function to refresh a bank connection
+        function refreshConnection(itemId, refreshType = 'soft') {
+            // Get CSRF token from cookie
+            const csrftoken = getCookie('csrftoken');
+            
+            fetch('{% url "dashboard:manual_refresh" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken  // Add CSRF token to headers
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    refresh_type: refreshType
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.action === 'redirect') {
+                        // For hard refresh, open Plaid Link
+                        createAndOpenLink({
+                            queryParams: `?update_mode=reconnect&item_id=${itemId}`,
+                            is_reconnect: true,
+                            item_id: itemId
+                        });
+                    } else {
+                        // For soft refresh, just show a success message
+                        alert('Successfully refreshed your bank data!');
+                        window.location.reload();
+                    }
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to refresh bank data'));
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing bank data:', error);
+                alert('An error occurred while refreshing your bank data.');
+            });
+        }
+        
+        // Attach event listeners
+        if (plaidLinkButton) {
+            plaidLinkButton.addEventListener('click', function() {
+                createAndOpenLink();
+            });
+        }
+        
+        // Refresh buttons
+        refreshButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.dataset.itemId;
+                const refreshType = this.dataset.refreshType || 'soft';
+                refreshConnection(itemId, refreshType);
+            });
+        });
+        
+        // Reconnect buttons
+        reconnectButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.dataset.itemId;
+                refreshConnection(itemId, 'hard');
+            });
+        });
+        
+        // Refresh links in dropdown
+        refreshLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const itemId = this.dataset.itemId;
+                const refreshType = this.dataset.refreshType || 'soft';
+                refreshConnection(itemId, refreshType);
+            });
+        });
+        
+        // Reconnect links in dropdown
+        reconnectLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const itemId = this.dataset.itemId;
+                refreshConnection(itemId, 'hard');
+            });
+        });
+    });
+</script>
+{% endblock %} 

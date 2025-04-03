@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Sign Up - ConsulWealth{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/auth.css' %}">
+{% endblock %}
+
+{% block body_class %}auth-page{% endblock %}
+
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-logo">
+        <a href="/">
+            <img src="{% static 'img/logo.png' %}" alt="ConsulWealth" class="img-fluid">
+        </a>
+    </div>
+    
+    <div class="auth-welcome">
+        <h1>Create your account</h1>
+        <p>Join ConsulWealth and start your financial journey</p>
+    </div>
+    
+    <div class="auth-card">
+        <h5 class="mb-4">Sign Up for ConsulWealth</h5>
+        
+        {% if messages %}
+        <div class="messages mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <form method="post" action="{% url 'supabase:signup' %}" class="auth-form">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="email">Email Address</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="your@email.com" required>
+                </div>
+                <small class="form-text text-muted">We'll never share your email with anyone else.</small>
+            </div>
+            
+            <div class="mb-3">
+                <label for="password">Password</label>
+                <div class="input-group password-field">
+                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Create a password" required>
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password')">
+                        <i class="far fa-eye" id="password-toggle-icon"></i>
+                    </button>
+                </div>
+                <small class="form-text text-muted">Your password must be at least 8 characters long.</small>
+            </div>
+            
+            <div class="mb-4">
+                <label for="password_confirm">Confirm Password</label>
+                <div class="input-group password-field">
+                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                    <input type="password" class="form-control" id="password_confirm" name="password_confirm" placeholder="Confirm your password" required>
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password_confirm')">
+                        <i class="far fa-eye" id="password-confirm-toggle-icon"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-user-plus me-2"></i>Create Account
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <div class="auth-divider">
+        <span>OR</span>
+    </div>
+    
+    <div class="auth-links">
+        <p>Already have an account? <a href="{% url 'supabase:login' %}">Log in</a></p>
+    </div>
+    
+    <div class="auth-footer">
+        <p><i class="fas fa-shield-alt"></i> Secure sign up powered by Supabase</p>
+    </div>
+</div>
+
+<script>
+function togglePasswordVisibility(inputId) {
+    const passwordInput = document.getElementById(inputId);
+    const toggleIcon = document.getElementById(inputId === 'password' ? 'password-toggle-icon' : 'password-confirm-toggle-icon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+</script>
+{% endblock %} 

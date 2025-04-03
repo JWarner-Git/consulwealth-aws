@@ -1,0 +1,395 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% load dashboard_filters %}
+
+{% block dashboard_content %}
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-exchange-alt"></i> Everyday Transactions
+    </h2>
+    
+    <div class="dashboard-card">
+        <div class="card-title d-flex justify-content-between align-items-center">
+            <span>Recent Spending & Income</span>
+            <div>
+                <button class="btn btn-sm btn-outline-primary me-2"><i class="fas fa-download me-1"></i>Export</button>
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-filter me-1"></i>Filter
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="filterDropdown">
+                        <li><a class="dropdown-item active" href="#">All Transactions</a></li>
+                        <li><a class="dropdown-item" href="#">Groceries</a></li>
+                        <li><a class="dropdown-item" href="#">Restaurants</a></li>
+                        <li><a class="dropdown-item" href="#">Transportation</a></li>
+                        <li><a class="dropdown-item" href="#">Shopping</a></li>
+                        <li><a class="dropdown-item" href="#">Utilities</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        {% if transactions %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Account</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.date }}</td>
+                            <td>{{ transaction.merchant_name }}</td>
+                            <td>
+                                {% if 'Food' in transaction.category or 'Restaurant' in transaction.category %}
+                                    <span class="badge bg-primary">Food & Dining</span>
+                                {% elif 'Groceries' in transaction.category %}
+                                    <span class="badge bg-success">Groceries</span>
+                                {% elif 'Transport' in transaction.category or 'Uber' in transaction.category %}
+                                    <span class="badge bg-info">Transportation</span>
+                                {% elif 'Shopping' in transaction.category or 'Amazon' in transaction.category %}
+                                    <span class="badge bg-warning">Shopping</span>
+                                {% elif 'Bill' in transaction.category or 'Utilities' in transaction.category %}
+                                    <span class="badge bg-danger">Bills</span>
+                                {% elif 'Entertainment' in transaction.category %}
+                                    <span class="badge bg-secondary">Entertainment</span>
+                                {% elif transaction.amount < 0 %}
+                                    <span class="badge bg-success">Income</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">{{ transaction.category|default:"Uncategorized" }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ transaction.account_name }}</td>
+                            <td class="{% if transaction.amount < 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if transaction.amount < 0 %}+{% endif %}${{ transaction.amount|abs_value|floatformat:2 }}
+                            </td>
+                            <td><span class="badge bg-success">Completed</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <nav aria-label="Transaction pagination">
+                <ul class="pagination justify-content-center">
+                    {% if transactions.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ transactions.previous_page_number }}" tabindex="-1">Previous</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for i in transactions.paginator.page_range %}
+                        {% if transactions.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if transactions.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ transactions.next_page_number }}">Next</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-disabled="true">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% else %}
+        <div class="empty-state text-center py-5">
+            <i class="fas fa-link-slash empty-state-icon mb-3"></i>
+            <h4>No transaction data available</h4>
+            <p class="text-muted mb-4">Connect your bank accounts to see your transaction history.</p>
+            <a href="#" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-2"></i>Connect Account
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-chart-pie"></i> Spending Summary
+    </h2>
+    
+    {% if transactions %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Spending by Category</div>
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="transactionTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Monthly Activity</div>
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="monthlyActivityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Spending by Category</div>
+                <div class="empty-state text-center py-4">
+                    <i class="fas fa-chart-pie empty-state-icon mb-3 text-muted"></i>
+                    <p class="text-muted">Connect your accounts to see spending analysis</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Monthly Activity</div>
+                <div class="empty-state text-center py-4">
+                    <i class="fas fa-chart-bar empty-state-icon mb-3 text-muted"></i>
+                    <p class="text-muted">Connect your accounts to see monthly activity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.empty-state-icon {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    opacity: 0.4;
+}
+
+/* Add more padding to dashboard sections */
+.dashboard-section {
+    padding: 0 30px;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 30px;
+}
+
+/* Add more space between cards */
+.dashboard-card {
+    margin-bottom: 25px;
+    padding: 22px;
+    border-radius: 10px;
+}
+
+/* Improve spacing in tables */
+.table th, .table td {
+    padding: 12px 15px;
+}
+
+/* Improved spacing for charts */
+.chart-container {
+    margin: 15px 0;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get chart elements
+        const transactionTypeChart = document.getElementById('transactionTypeChart');
+        const monthlyActivityChart = document.getElementById('monthlyActivityChart');
+        
+        // Parse JSON data from backend
+        const categoryData = JSON.parse('{{ category_data_json|escapejs }}');
+        const monthlyIncome = JSON.parse('{{ monthly_income_json|escapejs }}');
+        const monthlyExpenses = JSON.parse('{{ monthly_expenses_json|escapejs }}');
+        const last5Months = JSON.parse('{{ last_5_months_json|escapejs }}');
+        
+        // Portfolio color scheme from portfolio.html
+        const portfolioColors = {
+            greenDark: '#3E8033',    // Main green
+            greenMedium: '#5FA554',  // Medium green
+            greenLight: '#8CC63F',   // Light green
+            greenDarkest: '#2A592A', // Dark green
+            goldAccent: '#D4AF37',   // Gold accent
+            brownAccent: '#A3794E',  // Brown accent
+            oliveAccent: '#6B8E23',  // Olive accent
+            purpleAccent: '#9370DB', // Purple accent
+            blueAccent: '#4682B4',   // Steel blue
+            slateGray: '#708090',    // Slate gray
+            peru: '#CD853F',         // Peru brown
+            tanLight: '#D2B48C',      // Light tan
+            softRed: '#E57373'       // Soft red for expenses
+        };
+        
+        if (transactionTypeChart) {
+            // Get top 6 categories (or all if less than 6)
+            const sortedCategories = Object.keys(categoryData).sort((a, b) => categoryData[b] - categoryData[a]);
+            const topCategories = sortedCategories.slice(0, 6);
+            
+            // Combine smaller categories into "Other" if there are more than 6
+            if (sortedCategories.length > 6) {
+                const otherSum = sortedCategories.slice(6).reduce((sum, category) => sum + categoryData[category], 0);
+                categoryData["Other"] = otherSum;
+                topCategories.push("Other");
+            }
+            
+            // Prepare chart data
+            const labels = [];
+            const data = [];
+            
+            for (const category of topCategories) {
+                labels.push(category);
+                data.push(categoryData[category].toFixed(2));
+            }
+            
+            // Select colors for categories
+            const colorMap = {
+                'Food & Dining': portfolioColors.greenDark,
+                'Groceries': portfolioColors.greenMedium,
+                'Transportation': portfolioColors.blueAccent,
+                'Shopping': portfolioColors.goldAccent,
+                'Bills': portfolioColors.brownAccent,
+                'Entertainment': portfolioColors.purpleAccent,
+                'Transfer': portfolioColors.slateGray,
+                'Other': portfolioColors.peru
+            };
+            
+            // Default colors for categories not explicitly mapped
+            const defaultColors = [
+                portfolioColors.greenDark,
+                portfolioColors.greenMedium,
+                portfolioColors.blueAccent,
+                portfolioColors.goldAccent,
+                portfolioColors.brownAccent,
+                portfolioColors.purpleAccent,
+                portfolioColors.slateGray,
+                portfolioColors.peru
+            ];
+            
+            // Assign colors for chart
+            const backgroundColor = labels.map((category, index) => {
+                return colorMap[category] || defaultColors[index % defaultColors.length];
+            });
+            
+            // Initialize category chart with real data
+            new Chart(transactionTypeChart.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColor,
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: {
+                                    family: 'Inter, sans-serif'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.formattedValue;
+                                    return `${label}: $${value}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        if (monthlyActivityChart) {
+            // Extract real monthly income/expense data
+            const incomeData = [];
+            const expenseData = [];
+            
+            // Ensure months are in the correct order
+            for (const month of last5Months) {
+                incomeData.push(monthlyIncome[month] || 0);
+                expenseData.push(monthlyExpenses[month] || 0);
+            }
+            
+            // Initialize monthly activity chart with real data
+            new Chart(monthlyActivityChart.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: last5Months,
+                    datasets: [
+                        {
+                            label: 'Income',
+                            data: incomeData,
+                            backgroundColor: portfolioColors.greenDark,
+                            borderColor: portfolioColors.greenDarkest,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Expenses',
+                            data: expenseData,
+                            backgroundColor: portfolioColors.softRed,
+                            borderColor: '#C62828',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value;
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.formattedValue;
+                                    return `${label}: $${value}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 

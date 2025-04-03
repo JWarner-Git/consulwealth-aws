@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Your Profile - ConsulWealth{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/profile.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Left Sidebar -->
+        <div class="col-md-3 mb-4">
+            <div class="user-profile-card text-center mb-4">
+                <div class="user-avatar">
+                    <span>{{ request.user.email|first|upper }}</span>
+                </div>
+                <h4 class="mt-3">{{ profile.first_name|default:'' }} {{ profile.last_name|default:username }}</h4>
+                <p class="text-muted">{{ request.user.email }}</p>
+                
+                <div class="profile-completion mt-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Profile completion</span>
+                        <span>{{ profile_completion|default:"7" }}%</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ profile_completion|default:'7' }}%;" 
+                             aria-valuenow="{{ profile_completion|default:'7' }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                    <small class="text-muted mt-2">Complete your profile to unlock personalized recommendations</small>
+                </div>
+            </div>
+            
+            <div class="bank-connect-card text-center mb-4">
+                <div class="bank-icon">
+                    <i class="fas fa-university"></i>
+                </div>
+                <h5>Connect Your Bank</h5>
+                <p class="small text-muted">Link your accounts to enable personalized financial insights and budgeting tools</p>
+                <a href="{% url 'dashboard:connect_bank' %}" class="btn btn-success w-100">
+                    <i class="fas fa-link me-2"></i>Connect Bank Account
+                </a>
+            </div>
+            
+            <div class="profile-nav">
+                <a href="{% url 'profile' %}" class="nav-item active">
+                    <i class="fas fa-user me-2"></i>Profile
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-shield-alt me-2"></i>Security
+                </a>
+                <a href="{% url 'dashboard:dashboard' %}" class="nav-item">
+                    <i class="fas fa-chart-line me-2"></i>Dashboard
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-bell me-2"></i>Notifications
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-cog me-2"></i>Preferences
+                </a>
+                <a href="{% url 'supabase:logout' %}" class="nav-item text-danger">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+        
+        <!-- Right Content Area -->
+        <div class="col-md-9">
+            <div class="profile-content-card">
+                <div class="profile-header">
+                    <h3><i class="fas fa-user-edit me-2"></i> Edit Profile</h3>
+                    <p>Update your personal information and preferences</p>
+                </div>
+
+                {% if messages %}
+                <div class="messages mb-4">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <form method="post" class="profile-form">
+                    {% csrf_token %}
+                    
+                    <!-- Personal Information Section -->
+                    <div class="profile-section">
+                        <h4><i class="fas fa-user me-2"></i> Personal Information</h4>
+                        <div class="row mt-3">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" value="{{ profile.first_name|default:'' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" value="{{ profile.last_name|default:'' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="phone_number" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone_number" name="phone_number" value="{{ profile.phone_number|default:'' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="date_of_birth" class="form-label">Date of Birth</label>
+                                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" value="{{ profile.date_of_birth|date:'Y-m-d'|default:'' }}">
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label for="address" class="form-label">Address</label>
+                                <textarea class="form-control" id="address" name="address" rows="3">{{ profile.address|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Financial Information Section -->
+                    <div class="profile-section">
+                        <h4><i class="fas fa-money-bill-wave me-2"></i> Financial Information</h4>
+                        <div class="row mt-3">
+                            <div class="col-md-6 mb-3">
+                                <label for="employment_status" class="form-label">Employment Status</label>
+                                <select class="form-select" id="employment_status" name="employment_status">
+                                    <option value="" {% if not profile.employment_status %}selected{% endif %}>Select...</option>
+                                    <option value="employed" {% if profile.employment_status == 'employed' %}selected{% endif %}>Employed</option>
+                                    <option value="self_employed" {% if profile.employment_status == 'self_employed' %}selected{% endif %}>Self-Employed</option>
+                                    <option value="unemployed" {% if profile.employment_status == 'unemployed' %}selected{% endif %}>Unemployed</option>
+                                    <option value="retired" {% if profile.employment_status == 'retired' %}selected{% endif %}>Retired</option>
+                                    <option value="student" {% if profile.employment_status == 'student' %}selected{% endif %}>Student</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="annual_income" class="form-label">Annual Income ($)</label>
+                                <input type="number" step="0.01" class="form-control" id="annual_income" name="annual_income" value="{{ profile.annual_income|default:'' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="net_worth" class="form-label">Net Worth ($)</label>
+                                <input type="number" step="0.01" class="form-control" id="net_worth" name="net_worth" value="{{ profile.net_worth|default:'' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="tax_bracket" class="form-label">Tax Bracket (%)</label>
+                                <input type="number" step="1" min="0" max="99" class="form-control" id="tax_bracket" name="tax_bracket" value="{{ profile.tax_bracket|default:'' }}">
+                                <small class="form-text text-muted">Enter your tax percentage (e.g., 22 for 22%)</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Investment Profile Section -->
+                    <div class="profile-section">
+                        <h4><i class="fas fa-chart-line me-2"></i> Investment Profile</h4>
+                        <div class="row mt-3">
+                            <div class="col-md-6 mb-3">
+                                <label for="risk_tolerance" class="form-label">Risk Tolerance</label>
+                                <select class="form-select" id="risk_tolerance" name="risk_tolerance">
+                                    <option value="" {% if not profile.risk_tolerance %}selected{% endif %}>Select...</option>
+                                    <option value="conservative" {% if profile.risk_tolerance == 'conservative' %}selected{% endif %}>Conservative</option>
+                                    <option value="moderate" {% if profile.risk_tolerance == 'moderate' %}selected{% endif %}>Moderate</option>
+                                    <option value="aggressive" {% if profile.risk_tolerance == 'aggressive' %}selected{% endif %}>Aggressive</option>
+                                    <option value="very_aggressive" {% if profile.risk_tolerance == 'very_aggressive' %}selected{% endif %}>Very Aggressive</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="investment_experience" class="form-label">Investment Experience</label>
+                                <select class="form-select" id="investment_experience" name="investment_experience">
+                                    <option value="" {% if not profile.investment_experience %}selected{% endif %}>Select...</option>
+                                    <option value="none" {% if profile.investment_experience == 'none' %}selected{% endif %}>None</option>
+                                    <option value="beginner" {% if profile.investment_experience == 'beginner' %}selected{% endif %}>Beginner</option>
+                                    <option value="intermediate" {% if profile.investment_experience == 'intermediate' %}selected{% endif %}>Intermediate</option>
+                                    <option value="advanced" {% if profile.investment_experience == 'advanced' %}selected{% endif %}>Advanced</option>
+                                    <option value="expert" {% if profile.investment_experience == 'expert' %}selected{% endif %}>Expert</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="investment_timeline" class="form-label">Investment Timeline</label>
+                                <select class="form-select" id="investment_timeline" name="investment_timeline">
+                                    <option value="" {% if not profile.investment_timeline %}selected{% endif %}>Select...</option>
+                                    <option value="short_term" {% if profile.investment_timeline == 'short_term' %}selected{% endif %}>Short-term (0-3 years)</option>
+                                    <option value="medium_term" {% if profile.investment_timeline == 'medium_term' %}selected{% endif %}>Medium-term (3-7 years)</option>
+                                    <option value="long_term" {% if profile.investment_timeline == 'long_term' %}selected{% endif %}>Long-term (7+ years)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="retirement_age_goal" class="form-label">Retirement Age Goal</label>
+                                <input type="number" class="form-control" id="retirement_age_goal" name="retirement_age_goal" min="40" max="100" step="1" onchange="this.value=Math.round(this.value)" value="{{ profile.retirement_age_goal|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Financial Goals Section -->
+                    <div class="profile-section">
+                        <h4><i class="fas fa-bullseye me-2"></i> Financial Goals</h4>
+                        <div class="row mt-3">
+                            <div class="col-md-6 mb-3">
+                                <label for="monthly_savings_goal" class="form-label">Monthly Savings Goal ($)</label>
+                                <input type="number" step="0.01" class="form-control" id="monthly_savings_goal" name="monthly_savings_goal" value="{{ profile.monthly_savings_goal|default:'' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="primary_financial_goal" class="form-label">Primary Financial Goal</label>
+                                <select class="form-select" id="primary_financial_goal" name="primary_financial_goal">
+                                    <option value="" {% if not profile.primary_financial_goal %}selected{% endif %}>Select...</option>
+                                    <option value="retirement" {% if profile.primary_financial_goal == 'retirement' %}selected{% endif %}>Retirement</option>
+                                    <option value="buy_home" {% if profile.primary_financial_goal == 'buy_home' %}selected{% endif %}>Buy a Home</option>
+                                    <option value="education" {% if profile.primary_financial_goal == 'education' %}selected{% endif %}>Education</option>
+                                    <option value="emergency_fund" {% if profile.primary_financial_goal == 'emergency_fund' %}selected{% endif %}>Emergency Fund</option>
+                                    <option value="debt_repayment" {% if profile.primary_financial_goal == 'debt_repayment' %}selected{% endif %}>Debt Repayment</option>
+                                    <option value="vacation" {% if profile.primary_financial_goal == 'vacation' %}selected{% endif %}>Vacation</option>
+                                    <option value="major_purchase" {% if profile.primary_financial_goal == 'major_purchase' %}selected{% endif %}>Major Purchase</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="current_retirement_savings" class="form-label">Current Retirement Savings ($)</label>
+                                <input type="number" step="0.01" class="form-control" id="current_retirement_savings" name="current_retirement_savings" value="{{ profile.current_retirement_savings|default:'' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="target_retirement_savings" class="form-label">Target Retirement Savings ($)</label>
+                                <input type="number" step="0.01" class="form-control" id="target_retirement_savings" name="target_retirement_savings" value="{{ profile.target_retirement_savings|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <button type="reset" class="btn btn-light me-md-2">Cancel</button>
+                        <button type="submit" class="btn btn-success">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle form submission to ensure data types are correct
+        const profileForm = document.querySelector('.profile-form');
+        
+        if (profileForm) {
+            profileForm.addEventListener('submit', function(e) {
+                // Ensure retirement_age_goal is an integer
+                const retirementAgeInput = document.getElementById('retirement_age_goal');
+                if (retirementAgeInput && retirementAgeInput.value) {
+                    retirementAgeInput.value = Math.round(Number(retirementAgeInput.value));
+                }
+                
+                // Process all numeric fields to ensure proper format
+                const numericInputs = [
+                    'annual_income',
+                    'net_worth',
+                    'monthly_savings_goal',
+                    'current_retirement_savings',
+                    'target_retirement_savings',
+                    'tax_bracket'
+                ];
+                
+                numericInputs.forEach(function(fieldId) {
+                    const input = document.getElementById(fieldId);
+                    if (input && input.value) {
+                        // Ensure numeric fields have proper formatting
+                        input.value = Number(input.value);
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,796 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% load dashboard_filters %}
+
+{% block dashboard_content %}
+<style>
+    /* Reset any padding/margin constraints */
+    .dashboard-section {
+        padding: 0 30px;
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    /* Green header styling */
+    .goals-overview-header {
+        background-color: var(--primary-dark);
+        color: white;
+        padding: 10px 20px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        border-radius: 6px;
+    }
+    
+    .goals-overview-header h3 {
+        margin: 0;
+        color: white !important;
+        font-size: 1.2rem;
+    }
+    
+    .goals-overview-header i {
+        margin-right: 10px;
+    }
+    
+    /* Goal card styling */
+    .goal-card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0,0,0,0.05);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .goal-card:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .goal-card-header {
+        padding: 15px;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .goal-card-header h5 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .goal-card-header h5 i {
+        margin-right: 10px;
+        color: var(--primary-medium);
+    }
+    
+    .goal-card-body {
+        padding: 15px;
+    }
+    
+    /* Goal progress styling */
+    .goal-progress {
+        margin-top: 10px;
+    }
+    
+    .progress-bar-custom {
+        height: 10px;
+        border-radius: 5px;
+        margin-bottom: 8px;
+    }
+    
+    .progress-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    /* Goal status badges */
+    .goal-status {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .status-on-track {
+        background-color: rgba(94, 165, 84, 0.15);
+        color: #3E8033;
+    }
+    
+    .status-at-risk {
+        background-color: rgba(212, 175, 55, 0.15);
+        color: #9E7C2B;
+    }
+    
+    .status-behind {
+        background-color: rgba(163, 121, 78, 0.15);
+        color: #8E6542;
+    }
+    
+    .status-completed {
+        background-color: rgba(94, 165, 84, 0.15);
+        color: #3E8033;
+    }
+    
+    /* Goal statistics */
+    .goal-stats {
+        display: flex;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .goal-stat {
+        flex: 1;
+        text-align: center;
+        padding: 0 10px;
+    }
+    
+    .goal-stat-label {
+        font-size: 0.75rem;
+        color: #888;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
+    
+    .goal-stat-value {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--primary-dark);
+    }
+    
+    /* Goal actions */
+    .goal-actions {
+        margin-top: 15px;
+        text-align: right;
+    }
+    
+    /* Summary section styles */
+    .goals-summary {
+        background-color: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    
+    .summary-stat {
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .summary-stat-value {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--primary-dark);
+    }
+    
+    .summary-stat-label {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    /* Progress circle */
+    .progress-circle-container {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        margin: 0 auto;
+    }
+    
+    /* Add new goal button */
+    .add-goal-card {
+        background-color: rgba(94, 165, 84, 0.05);
+        border: 2px dashed rgba(94, 165, 84, 0.3);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .add-goal-card:hover {
+        background-color: rgba(94, 165, 84, 0.1);
+    }
+    
+    .add-goal-card i {
+        font-size: 2rem;
+        color: var(--primary-medium);
+        margin-bottom: 10px;
+    }
+    
+    /* Goal icon container */
+    .goal-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        margin-right: 15px;
+    }
+    
+    .goal-icon-home {
+        background-color: rgba(94, 165, 84, 0.15);
+        color: #3E8033;
+    }
+    
+    .goal-icon-emergency {
+        background-color: rgba(212, 175, 55, 0.15);
+        color: #9E7C2B;
+    }
+    
+    .goal-icon-vacation {
+        background-color: rgba(70, 130, 180, 0.15);
+        color: #4682B4;
+    }
+    
+    .goal-icon-education {
+        background-color: rgba(147, 112, 219, 0.15);
+        color: #9370DB;
+    }
+    
+    .goal-icon-retirement {
+        background-color: rgba(163, 121, 78, 0.15);
+        color: #8E6542;
+    }
+    
+    .goal-icon-car {
+        background-color: rgba(107, 142, 35, 0.15);
+        color: #6B8E23;
+    }
+    
+    /* Goal modal */
+    .goal-form-group {
+        margin-bottom: 15px;
+    }
+    
+    .goal-form-label {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #444;
+    }
+</style>
+
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-trophy"></i> Financial Goals
+    </h2>
+    
+    <!-- Goals Overview Header -->
+    <div class="goals-overview-header">
+        <i class="fas fa-bullseye"></i>
+        <h3>Goal Tracking & Progress</h3>
+    </div>
+    
+    <!-- Goals Summary Section -->
+    <div class="goals-summary">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="summary-stat">
+                    <div class="progress-circle-container">
+                        <canvas id="overallProgress"></canvas>
+                        <div class="progress-text" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                            <div style="font-size: 1.4rem; font-weight: bold; color: var(--primary-dark);">65%</div>
+                        </div>
+                    </div>
+                    <div class="summary-stat-label">Overall Progress</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="summary-stat">
+                    <div class="summary-stat-value">6</div>
+                    <div class="summary-stat-label">Active Goals</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="summary-stat">
+                    <div class="summary-stat-value">$47,500</div>
+                    <div class="summary-stat-label">Total Saved</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Goal Cards -->
+    <div class="row">
+        <!-- Home Down Payment -->
+        <div class="col-md-6">
+            <div class="goal-card">
+                <div class="goal-card-header">
+                    <h5>
+                        <div class="goal-icon goal-icon-home">
+                            <i class="fas fa-home"></i>
+                        </div>
+                        Home Down Payment
+                    </h5>
+                    <span class="goal-status status-on-track">On Track</span>
+                </div>
+                <div class="goal-card-body">
+                    <div class="goal-stats">
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Saved</div>
+                            <div class="goal-stat-value">$25,000</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Target</div>
+                            <div class="goal-stat-value">$50,000</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Monthly</div>
+                            <div class="goal-stat-value">$800</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Deadline</div>
+                            <div class="goal-stat-value">14 mo</div>
+                        </div>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="progress progress-bar-custom">
+                            <div class="progress-bar" role="progressbar" style="width: 50%; background-color: #3E8033;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span>$25,000</span>
+                            <span>$50,000</span>
+                        </div>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
+                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Emergency Fund -->
+        <div class="col-md-6">
+            <div class="goal-card">
+                <div class="goal-card-header">
+                    <h5>
+                        <div class="goal-icon goal-icon-emergency">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        Emergency Fund
+                    </h5>
+                    <span class="goal-status status-at-risk">At Risk</span>
+                </div>
+                <div class="goal-card-body">
+                    <div class="goal-stats">
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Saved</div>
+                            <div class="goal-stat-value">$5,500</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Target</div>
+                            <div class="goal-stat-value">$12,000</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Monthly</div>
+                            <div class="goal-stat-value">$200</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Deadline</div>
+                            <div class="goal-stat-value">6 mo</div>
+                        </div>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="progress progress-bar-custom">
+                            <div class="progress-bar" role="progressbar" style="width: 45%; background-color: #D4AF37;" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span>$5,500</span>
+                            <span>$12,000</span>
+                        </div>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
+                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Vacation Fund -->
+        <div class="col-md-6">
+            <div class="goal-card">
+                <div class="goal-card-header">
+                    <h5>
+                        <div class="goal-icon goal-icon-vacation">
+                            <i class="fas fa-plane"></i>
+                        </div>
+                        Dream Vacation
+                    </h5>
+                    <span class="goal-status status-on-track">On Track</span>
+                </div>
+                <div class="goal-card-body">
+                    <div class="goal-stats">
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Saved</div>
+                            <div class="goal-stat-value">$3,200</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Target</div>
+                            <div class="goal-stat-value">$5,000</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Monthly</div>
+                            <div class="goal-stat-value">$300</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Deadline</div>
+                            <div class="goal-stat-value">7 mo</div>
+                        </div>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="progress progress-bar-custom">
+                            <div class="progress-bar" role="progressbar" style="width: 64%; background-color: #4682B4;" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span>$3,200</span>
+                            <span>$5,000</span>
+                        </div>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
+                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Education Fund -->
+        <div class="col-md-6">
+            <div class="goal-card">
+                <div class="goal-card-header">
+                    <h5>
+                        <div class="goal-icon goal-icon-education">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        Education Fund
+                    </h5>
+                    <span class="goal-status status-behind">Behind</span>
+                </div>
+                <div class="goal-card-body">
+                    <div class="goal-stats">
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Saved</div>
+                            <div class="goal-stat-value">$4,800</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Target</div>
+                            <div class="goal-stat-value">$30,000</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Monthly</div>
+                            <div class="goal-stat-value">$350</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Deadline</div>
+                            <div class="goal-stat-value">36 mo</div>
+                        </div>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="progress progress-bar-custom">
+                            <div class="progress-bar" role="progressbar" style="width: 16%; background-color: #A3794E;" aria-valuenow="16" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span>$4,800</span>
+                            <span>$30,000</span>
+                        </div>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
+                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Car Fund -->
+        <div class="col-md-6">
+            <div class="goal-card">
+                <div class="goal-card-header">
+                    <h5>
+                        <div class="goal-icon goal-icon-car">
+                            <i class="fas fa-car"></i>
+                        </div>
+                        New Car
+                    </h5>
+                    <span class="goal-status status-on-track">On Track</span>
+                </div>
+                <div class="goal-card-body">
+                    <div class="goal-stats">
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Saved</div>
+                            <div class="goal-stat-value">$7,500</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Target</div>
+                            <div class="goal-stat-value">$15,000</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Monthly</div>
+                            <div class="goal-stat-value">$500</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Deadline</div>
+                            <div class="goal-stat-value">18 mo</div>
+                        </div>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="progress progress-bar-custom">
+                            <div class="progress-bar" role="progressbar" style="width: 50%; background-color: #6B8E23;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span>$7,500</span>
+                            <span>$15,000</span>
+                        </div>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
+                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Retirement (Long-term)-->
+        <div class="col-md-6">
+            <div class="goal-card">
+                <div class="goal-card-header">
+                    <h5>
+                        <div class="goal-icon goal-icon-retirement">
+                            <i class="fas fa-umbrella-beach"></i>
+                        </div>
+                        Retirement
+                    </h5>
+                    <span class="goal-status status-on-track">On Track</span>
+                </div>
+                <div class="goal-card-body">
+                    <div class="goal-stats">
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Saved</div>
+                            <div class="goal-stat-value">$45,000</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Target</div>
+                            <div class="goal-stat-value">$500K</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Monthly</div>
+                            <div class="goal-stat-value">$800</div>
+                        </div>
+                        <div class="goal-stat">
+                            <div class="goal-stat-label">Timeline</div>
+                            <div class="goal-stat-value">25 yrs</div>
+                        </div>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="progress progress-bar-custom">
+                            <div class="progress-bar" role="progressbar" style="width: 9%; background-color: #8E6542;" aria-valuenow="9" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span>$45,000</span>
+                            <span>$500,000</span>
+                        </div>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
+                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Add New Goal Card -->
+        <div class="col-md-6">
+            <div class="add-goal-card" data-bs-toggle="modal" data-bs-target="#addGoalModal">
+                <i class="fas fa-plus-circle"></i>
+                <h5>Add New Goal</h5>
+                <p class="text-muted">Create a new financial goal to track your progress</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Goal Modal -->
+<div class="modal fade" id="addGoalModal" tabindex="-1" aria-labelledby="addGoalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--primary-dark); color: white;">
+                <h5 class="modal-title" id="addGoalModalLabel"><i class="fas fa-plus-circle me-2"></i>Create New Goal</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newGoalForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="goal-form-group">
+                                <label class="goal-form-label" for="goalName">Goal Name</label>
+                                <input type="text" class="form-control" id="goalName" placeholder="e.g. European Vacation">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="goal-form-group">
+                                <label class="goal-form-label" for="goalType">Goal Type</label>
+                                <select class="form-select" id="goalType">
+                                    <option value="home">Home Down Payment</option>
+                                    <option value="emergency">Emergency Fund</option>
+                                    <option value="vacation">Vacation</option>
+                                    <option value="education">Education</option>
+                                    <option value="retirement">Retirement</option>
+                                    <option value="car">Vehicle</option>
+                                    <option value="debt">Debt Payoff</option>
+                                    <option value="major_purchase">Major Purchase</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="goal-form-group">
+                                <label class="goal-form-label" for="goalAmount">Target Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="goalAmount" placeholder="10000">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="goal-form-group">
+                                <label class="goal-form-label" for="currentSaved">Current Savings</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="currentSaved" placeholder="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="goal-form-group">
+                                <label class="goal-form-label" for="targetDate">Target Date</label>
+                                <input type="date" class="form-control" id="targetDate">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="goal-form-group">
+                                <label class="goal-form-label" for="monthlyContribution">Monthly Contribution</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="monthlyContribution" placeholder="500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="goal-form-group">
+                        <label class="goal-form-label" for="goalNotes">Notes</label>
+                        <textarea class="form-control" id="goalNotes" rows="3" placeholder="Additional details about your goal..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" style="background-color: var(--primary-medium); border-color: var(--primary-medium);">Save Goal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Goal Modal -->
+<div class="modal fade" id="editGoalModal" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--primary-dark); color: white;">
+                <h5 class="modal-title" id="editGoalModalLabel"><i class="fas fa-edit me-2"></i>Edit Goal</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editGoalForm">
+                    <!-- Same form fields as add goal modal but with values prefilled -->
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto">Delete Goal</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" style="background-color: var(--primary-medium); border-color: var(--primary-medium);">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Portfolio color scheme
+        const portfolioColors = {
+            greenDark: '#3E8033',    // Main green
+            greenMedium: '#5FA554',  // Medium green
+            greenLight: '#8CC63F',   // Light green
+            greenDarkest: '#2A592A', // Dark green
+            goldAccent: '#D4AF37',   // Gold accent
+            brownAccent: '#A3794E',  // Brown accent
+            oliveAccent: '#6B8E23',  // Olive accent
+            purpleAccent: '#9370DB', // Purple accent
+            blueAccent: '#4682B4',   // Steel blue
+            slateGray: '#708090',    // Slate gray
+            peru: '#CD853F',         // Peru brown
+            tanLight: '#D2B48C'      // Light tan
+        };
+        
+        // Initialize overall progress chart
+        const overallProgressChart = new Chart(
+            document.getElementById('overallProgress').getContext('2d'),
+            {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [65, 35],
+                        backgroundColor: [
+                            portfolioColors.greenMedium,
+                            '#E9ECEF'
+                        ],
+                        borderWidth: 0,
+                        cutout: '80%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    }
+                }
+            }
+        );
+        
+        // Calculate monthly contribution needed
+        function calculateMonthlyContribution() {
+            const targetAmount = parseFloat(document.getElementById('goalAmount').value) || 0;
+            const currentSaved = parseFloat(document.getElementById('currentSaved').value) || 0;
+            const targetDate = new Date(document.getElementById('targetDate').value);
+            const today = new Date();
+            
+            // Calculate months between now and target date
+            const monthsLeft = (targetDate.getFullYear() - today.getFullYear()) * 12 + 
+                               (targetDate.getMonth() - today.getMonth());
+            
+            if (monthsLeft <= 0 || isNaN(monthsLeft)) {
+                return;
+            }
+            
+            // Calculate monthly contribution needed
+            const amountNeeded = targetAmount - currentSaved;
+            const monthlyContribution = amountNeeded / monthsLeft;
+            
+            // Update the monthly contribution field
+            document.getElementById('monthlyContribution').value = Math.ceil(monthlyContribution);
+        }
+        
+        // Add event listeners to recalculate when values change
+        document.getElementById('goalAmount').addEventListener('input', calculateMonthlyContribution);
+        document.getElementById('currentSaved').addEventListener('input', calculateMonthlyContribution);
+        document.getElementById('targetDate').addEventListener('change', calculateMonthlyContribution);
+    });
+</script>
+{% endblock %}
+{% endblock %} 

@@ -1,0 +1,353 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% load dashboard_filters %}
+
+{% block dashboard_content %}
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-exchange-alt"></i> All Transactions
+    </h2>
+    
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i> This view shows all transactions including investment account transactions.
+        <a href="{% url 'dashboard:transactions' %}" class="alert-link ms-2">Switch to regular view</a>
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="card-title d-flex justify-content-between align-items-center">
+            <span>Complete Transaction History</span>
+            <div>
+                <button class="btn btn-sm btn-outline-primary me-2"><i class="fas fa-download me-1"></i>Export</button>
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-filter me-1"></i>Filter
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="filterDropdown">
+                        <li><a class="dropdown-item active" href="#">All Transactions</a></li>
+                        <li><a class="dropdown-item" href="#">Groceries</a></li>
+                        <li><a class="dropdown-item" href="#">Restaurants</a></li>
+                        <li><a class="dropdown-item" href="#">Transportation</a></li>
+                        <li><a class="dropdown-item" href="#">Shopping</a></li>
+                        <li><a class="dropdown-item" href="#">Utilities</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        {% if transactions %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Account</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr {% if transaction.is_investment %}class="table-light"{% endif %}>
+                        <td>{{ transaction.date }}</td>
+                        <td>{{ transaction.merchant_name|default:transaction.name }}</td>
+                        <td>
+                            {% if 'Food' in transaction.category or 'Restaurant' in transaction.category %}
+                                <span class="badge bg-primary">Food & Dining</span>
+                            {% elif 'Groceries' in transaction.category %}
+                                <span class="badge bg-success">Groceries</span>
+                            {% elif 'Transport' in transaction.category or 'Uber' in transaction.category %}
+                                <span class="badge bg-info">Transportation</span>
+                            {% elif 'Shopping' in transaction.category or 'Amazon' in transaction.category %}
+                                <span class="badge bg-warning">Shopping</span>
+                            {% elif 'Bill' in transaction.category or 'Utilities' in transaction.category %}
+                                <span class="badge bg-danger">Bills</span>
+                            {% elif 'Entertainment' in transaction.category %}
+                                <span class="badge bg-secondary">Entertainment</span>
+                            {% elif transaction.amount < 0 %}
+                                <span class="badge bg-success">Income</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ transaction.category|default:"Uncategorized" }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ transaction.account_name }}</td>
+                        <td>
+                            {% if transaction.is_investment %}
+                            <span class="badge bg-info">Investment</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Regular</span>
+                            {% endif %}
+                        </td>
+                        <td class="{% if transaction.amount < 0 %}text-success{% else %}text-danger{% endif %}">
+                            {% if transaction.amount < 0 %}+{% endif %}${{ transaction.amount|abs_value|floatformat:2 }}
+                        </td>
+                        <td><span class="badge bg-success">Completed</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <nav aria-label="Transaction pagination">
+                <ul class="pagination justify-content-center">
+                    {% if transactions.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ transactions.previous_page_number }}" tabindex="-1">Previous</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for i in transactions.paginator.page_range %}
+                        {% if transactions.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if transactions.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ transactions.next_page_number }}">Next</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-disabled="true">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% else %}
+        <div class="empty-state text-center py-5">
+            <i class="fas fa-link-slash empty-state-icon mb-3"></i>
+            <h4>No transaction data available</h4>
+            <p class="text-muted mb-4">Connect your bank accounts to see your transaction history.</p>
+            <a href="#" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-2"></i>Connect Account
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-chart-pie"></i> Spending Summary
+    </h2>
+    
+    {% if transactions %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Spending by Category</div>
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="transactionTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Monthly Activity</div>
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="monthlyActivityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Account Cash Flow</div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Inflows</th>
+                                <th>Outflows</th>
+                                <th>Net</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for account in accounts %}
+                            <tr {% if account.id in investment_account_ids %}class="table-light"{% endif %}>
+                                <td>
+                                    {{ account.name }}
+                                    {% if account.id in investment_account_ids %}
+                                    <span class="badge bg-info ms-2">Investment</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-success">${{ account.inflows|default:"0.00" }}</td>
+                                <td class="text-danger">${{ account.outflows|default:"0.00" }}</td>
+                                <td class="{% if account.net >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {% if account.net >= 0 %}+{% endif %}${{ account.net|default:"0.00" }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            <tr>
+                                <td><strong>Total</strong></td>
+                                <td class="text-success"><strong>${{ total_income|floatformat:2 }}</strong></td>
+                                <td class="text-danger"><strong>${{ total_spending|floatformat:2 }}</strong></td>
+                                <td class="{% if net_cashflow >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    <strong>{% if net_cashflow >= 0 %}+{% endif %}${{ net_cashflow|floatformat:2 }}</strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Transaction Stats</div>
+                <div class="p-3">
+                    <p>
+                        <strong>Total transactions:</strong> {{ total_transactions }}
+                    </p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-success text-white mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Income</h5>
+                                    <h3>${{ total_income|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-danger text-white mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Expenses</h5>
+                                    <h3>${{ total_spending|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Spending by Category</div>
+                <div class="empty-state text-center py-4">
+                    <i class="fas fa-chart-pie empty-state-icon mb-3 text-muted"></i>
+                    <p class="text-muted">Connect your accounts to see spending analysis</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Monthly Activity</div>
+                <div class="empty-state text-center py-4">
+                    <i class="fas fa-chart-bar empty-state-icon mb-3 text-muted"></i>
+                    <p class="text-muted">Connect your accounts to see monthly activity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+$(document).ready(function() {
+    {% if transactions %}
+    // Spending by Category Chart
+    var spendingCtx = document.getElementById('transactionTypeChart').getContext('2d');
+    var spendingChart = new Chart(spendingCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ spending_categories|safe }},
+            datasets: [{
+                data: {{ spending_amounts|safe }},
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(199, 199, 199, 0.7)',
+                    'rgba(83, 102, 255, 0.7)',
+                    'rgba(40, 159, 64, 0.7)',
+                    'rgba(210, 199, 199, 0.7)',
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                    'rgba(199, 199, 199, 1)',
+                    'rgba(83, 102, 255, 1)',
+                    'rgba(40, 159, 64, 1)',
+                    'rgba(210, 199, 199, 1)',
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                title: {
+                    display: true,
+                    text: 'Spending by Category'
+                }
+            }
+        }
+    });
+
+    // Monthly Activity Chart
+    var monthlyActivityCtx = document.getElementById('monthlyActivityChart').getContext('2d');
+    var monthlyActivityChart = new Chart(monthlyActivityCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            datasets: [{
+                label: 'Income',
+                data: [500, 700, 600, 550],
+                backgroundColor: 'rgba(40, 167, 69, 0.5)',
+                borderColor: 'rgba(40, 167, 69, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Expenses',
+                data: [300, 450, 380, 420],
+                backgroundColor: 'rgba(220, 53, 69, 0.5)',
+                borderColor: 'rgba(220, 53, 69, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Monthly Income vs Expenses'
+                }
+            }
+        }
+    });
+    {% endif %}
+});
+</script>
+{% endblock %} 

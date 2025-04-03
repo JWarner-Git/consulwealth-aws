@@ -1,0 +1,945 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% load humanize %}
+{% load dashboard_filters %}
+
+{% block dashboard_content %}
+<style>
+    :root {
+        --tan-lightest: #FAF5F0;  /* Lightest tan for backgrounds */
+        --tan-lighter: #FDF9E5;   /* Cream color for cards */
+        --tan-light: #E8DDCA;     /* Light tan for borders */
+        --primary-color: #3E8033; /* Green for primary elements */
+        --secondary-color: #D4AF37; /* Gold for accents */
+    }
+    
+    body {
+        background-color: var(--tan-lightest);
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Dashboard card styling */
+    .dashboard-card {
+        background-color: var(--tan-lighter);
+        border-radius: 12px;
+        padding: 28px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        border: 1px solid var(--tan-light);
+        margin-bottom: 35px;
+        height: 100%;
+        min-height: 500px;
+    }
+    
+    /* Make cards fill more of the available space */
+    .container-fluid {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    
+    .asset-allocation .chart-container {
+        height: 250px !important;
+    }
+    
+    .asset-allocation .card-content {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .asset-allocation #allocationLegend {
+        margin-top: 0.5rem;
+    }
+    
+    .progress-circle {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        margin: 0 auto;
+    }
+    
+    .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+    
+    /* Adjust spacing to use more vertical space */
+    .dashboard-card {
+        margin-bottom: 8px;
+    }
+    
+    .card-title {
+        margin-bottom: 10px;
+    }
+    
+    /* Make data display more compact */
+    .mb-4 {
+        margin-bottom: 1rem !important;
+    }
+    
+    .mb-3 {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .mt-4 {
+        margin-top: 0.75rem !important;
+    }
+    
+    /* Portfolio stat card styling */
+    .stat-card {
+        padding: 15px;
+        background-color: var(--tan-light);
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    
+    .stat-title {
+        font-size: 0.8rem;
+        color: var(--primary-dark);
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+        margin-bottom: 5px;
+    }
+    
+    .stat-change {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    /* Mini asset allocation chart */
+    .asset-allocation-mini {
+        height: 180px;
+        max-width: 100%;
+        margin-top: 10px;
+    }
+    
+    /* Goal card styling */
+    .goals-container {
+        max-height: 520px;
+        overflow-y: auto;
+    }
+    
+    .goal-card {
+        background-color: var(--tan-lighter);
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        border: 1px solid var(--tan-light);
+    }
+    
+    .goal-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+    
+    .bg-success-light {
+        background-color: rgba(62, 128, 51, 0.2);
+    }
+    
+    .bg-warning-light {
+        background-color: rgba(212, 175, 55, 0.2);
+    }
+    
+    .bg-info-light {
+        background-color: rgba(95, 165, 84, 0.2);
+    }
+    
+    .bg-danger-light {
+        background-color: rgba(220, 53, 69, 0.2);
+    }
+    
+    .text-success {
+        color: var(--primary) !important;
+    }
+    
+    .text-warning {
+        color: #D4AF37 !important;
+    }
+    
+    .text-danger {
+        color: #dc3545 !important;
+    }
+    
+    /* Goal card styling */
+    .goal-card-compact {
+        background-color: var(--tan-lighter);
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        border: 1px solid var(--tan-light);
+    }
+    
+    .goal-icon-small {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+    
+    .goal-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+    
+    /* Add taller chart containers */
+    .chart-container-lg {
+        position: relative;
+        height: 320px !important;
+    }
+    
+    .portfolio-summary-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .financial-goals-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .dashboard-row {
+        margin-bottom: 30px;
+    }
+    
+    /* Change sidebar active item to use cream color */
+    .nav-link.active, .nav-item.active > .nav-link {
+        background-color: #FDF9E5 !important;
+        color: var(--primary-color) !important;
+    }
+    
+    .nav-link.active i, .nav-item.active > .nav-link i {
+        color: var(--primary-color) !important;
+    }
+    
+    /* Make sure all sidebar item highlights use cream background */
+    .sidebar-nav .nav-item .active {
+        background-color: #FDF9E5 !important;
+    }
+    
+    /* Ensure consistency for any other active elements */
+    .sidebar-nav .active, .sidebar-nav .active > a {
+        background-color: #FDF9E5 !important;
+    }
+</style>
+
+<div class="dashboard-section" style="padding-bottom: 60px;">
+    <div class="row">
+        <!-- Portfolio Summary -->
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <div class="card-title d-flex justify-content-between align-items-center">
+                    <span>Portfolio Summary</span>
+                    <a href="{% url 'dashboard:portfolio' %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <div class="stat-title">TOTAL PORTFOLIO VALUE</div>
+                            <div class="stat-value">${{ total_value|floatformat:2|intcomma }}</div>
+                            <div class="stat-change {% if todays_change_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                <i class="fas {% if todays_change_pct >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %} me-1"></i>
+                                <span class="daily-change">Today's change: 
+                                {% if todays_change_amount >= 0 %}+{% endif %}${{ todays_change_amount|floatformat:2 }} ({{ todays_change_pct|floatformat:1 }}%)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container asset-allocation-mini">
+                            <canvas id="dashboardAssetAllocationChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container mt-2" style="height: 340px; max-width: 100%;">
+                    <canvas id="portfolioValueChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Financial Goals (Top Right) -->
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <div class="card-title d-flex justify-content-between align-items-center">
+                    <span>Financial Goals</span>
+                    <a href="{% url 'dashboard:goals' %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                </div>
+                
+                <!-- Goal Cards - Compact Version -->
+                <div class="goals-container">
+                    <!-- Home Down Payment -->
+                    <div class="goal-card-compact mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center">
+                                <div class="goal-icon-small bg-success-light me-2">
+                                    <i class="fas fa-home"></i>
+                                </div>
+                                <h6 class="mb-0">Home Down Payment</h6>
+                            </div>
+                            <span class="badge bg-success-light text-success">On Track</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 50%" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Emergency Fund -->
+                    <div class="goal-card-compact mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center">
+                                <div class="goal-icon-small bg-warning-light me-2">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <h6 class="mb-0">Emergency Fund</h6>
+                            </div>
+                            <span class="badge bg-warning-light text-warning">At Risk</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: 45%" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dream Vacation -->
+                    <div class="goal-card-compact mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center">
+                                <div class="goal-icon-small bg-info-light me-2">
+                                    <i class="fas fa-plane"></i>
+                                </div>
+                                <h6 class="mb-0">Dream Vacation</h6>
+                            </div>
+                            <span class="badge bg-success-light text-success">On Track</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: 64%" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Education Fund -->
+                    <div class="goal-card-compact mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center">
+                                <div class="goal-icon-small bg-danger-light me-2">
+                                    <i class="fas fa-graduation-cap"></i>
+                                </div>
+                                <h6 class="mb-0">Education Fund</h6>
+                            </div>
+                            <span class="badge bg-danger-light text-danger">Behind</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: 16%" aria-valuenow="16" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- New Car -->
+                    <div class="goal-card-compact mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center">
+                                <div class="goal-icon-small bg-success-light me-2">
+                                    <i class="fas fa-car"></i>
+                                </div>
+                                <h6 class="mb-0">New Car</h6>
+                            </div>
+                            <span class="badge bg-success-light text-success">On Track</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 50%" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Retirement -->
+                    <div class="goal-card-compact mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="d-flex align-items-center">
+                                <div class="goal-icon-small bg-success-light me-2">
+                                    <i class="fas fa-umbrella-beach"></i>
+                                </div>
+                                <h6 class="mb-0">Retirement</h6>
+                            </div>
+                            <span class="badge bg-success-light text-success">On Track</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 9%" aria-valuenow="9" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row" style="margin-top: 10px;">
+        <!-- Monthly Budget (Bottom Left) -->
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <div class="card-title d-flex justify-content-between align-items-center">
+                    <span>Monthly Budget</span>
+                    <a href="{% url 'dashboard:budgeting' %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mb-2">Spending by Category</h6>
+                        <div class="chart-container" style="position: relative; height: 290px;">
+                            <canvas id="categorySpendingChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mb-2">Budget Overview</h6>
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span>Income: <strong>${{ monthly_income|floatformat:0|intcomma }}</strong></span>
+                            <span>Expenses: <strong>${{ monthly_expenses|floatformat:0|intcomma }}</strong></span>
+                            <span>Savings: <strong>{{ savings_rate }}%</strong></span>
+                        </div>
+                        <!-- Budget Progress Bars -->
+                        <div class="budget-progress-container">
+                            <!-- Food & Dining -->
+                            <div class="budget-card-compact mb-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center">
+                                        <div class="goal-icon-small bg-success-light me-2">
+                                            <i class="fas fa-utensils"></i>
+                                        </div>
+                                        <h6 class="mb-0">Food & Dining</h6>
+                                    </div>
+                                    <span class="badge bg-success-light text-success">On Track</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: 65%" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1 small">
+                                    <span class="text-muted">$450 / $700</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Shopping -->
+                            <div class="budget-card-compact mb-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center">
+                                        <div class="goal-icon-small bg-warning-light me-2">
+                                            <i class="fas fa-shopping-bag"></i>
+                                        </div>
+                                        <h6 class="mb-0">Shopping</h6>
+                                    </div>
+                                    <span class="badge bg-warning-light text-warning">At Risk</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" style="width: 85%" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1 small">
+                                    <span class="text-muted">$340 / $400</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Transportation -->
+                            <div class="budget-card-compact mb-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center">
+                                        <div class="goal-icon-small bg-info-light me-2">
+                                            <i class="fas fa-car"></i>
+                                        </div>
+                                        <h6 class="mb-0">Transportation</h6>
+                                    </div>
+                                    <span class="badge bg-success-light text-success">On Track</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-info" role="progressbar" style="width: 45%" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1 small">
+                                    <span class="text-muted">$180 / $400</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Bills & Utilities -->
+                            <div class="budget-card-compact mb-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center">
+                                        <div class="goal-icon-small bg-danger-light me-2">
+                                            <i class="fas fa-file-invoice-dollar"></i>
+                                        </div>
+                                        <h6 class="mb-0">Bills & Utilities</h6>
+                                    </div>
+                                    <span class="badge bg-danger-light text-danger">Over Budget</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-1 small">
+                                    <span class="text-muted">$650 / $600</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Retirement Progress (Bottom Right) -->
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <div class="card-title d-flex justify-content-between align-items-center">
+                    <span>Retirement Planning</span>
+                    <a href="{% url 'dashboard:planning' %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="text-center mb-3">
+                            <div class="progress-circle">
+                                <svg width="180" height="180" viewBox="0 0 180 180">
+                                    <circle cx="90" cy="90" r="80" fill="none" stroke="#e9ecef" stroke-width="16"/>
+                                    <circle cx="90" cy="90" r="80" fill="none" stroke="#3E8033" stroke-width="16" 
+                                        stroke-dasharray="502.4" stroke-dashoffset="{{ 502.4|subtract:retirement_progress|multiply:5.024 }}"
+                                        transform="rotate(-90 90 90)"/>
+                                </svg>
+                                <div class="progress-text">
+                                    <div class="progress-percentage">{{ retirement_progress }}%</div>
+                                    <div class="progress-label">Progress</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3 mt-3">
+                            <span class="d-block text-muted">Estimated retirement savings at age 65:</span>
+                            <h3 class="mb-0 text-success">${{ projected_retirement_value|floatformat:0|intcomma }}</h3>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Retirement Projection Chart -->
+                <div class="chart-container mb-3" style="position: relative; height: 240px;">
+                    <canvas id="retirementProjectionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Asset Allocation Chart for Dashboard
+        const dashboardAssetAllocationCtx = document.getElementById('dashboardAssetAllocationChart');
+        
+        // Get the allocation data from backend variables
+        const assetLabels = {{ asset_allocation_labels|safe }};
+        const assetData = {{ asset_allocation_data|safe }};
+        
+        console.log('Asset allocation labels:', assetLabels);
+        console.log('Asset allocation data:', assetData);
+        
+        if (dashboardAssetAllocationCtx && assetLabels && assetData) {
+            new Chart(dashboardAssetAllocationCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: assetLabels,
+                    datasets: [{
+                        data: assetData,
+                        backgroundColor: [
+                            '#3E8033',  // Green - Stocks
+                            '#5FA554',  // Light green - ETFs
+                            '#8CC63F',  // Lime - Mutual Funds
+                            '#2A592A',  // Dark green - Bonds
+                            '#D4AF37',  // Gold - Cash
+                            '#A3794E',  // Brown - Other
+                            '#6B8E23'   // Olive - Fixed Income
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'right',
+                            labels: {
+                                font: {
+                                    size: 10,
+                                    family: 'Inter, sans-serif'
+                                },
+                                boxWidth: 10,
+                                padding: 5,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            },
+                            align: 'start',
+                            maxWidth: 150,
+                            maxHeight: 200,
+                            rtl: false,
+                            textDirection: 'ltr'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round(value / total * 100);
+                                    return `${context.label}: ${percentage}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            console.error('Dashboard Asset Allocation Chart element not found!');
+        }
+        
+        // Portfolio Value Chart - Improved version
+        const portfolioValueCtx = document.getElementById('portfolioValueChart');
+        
+        // Use portfolio data similar to portfolio.html
+        const portfolioLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const portfolioData = [0, 0, 0, 0, 0, 0, 0, 0, 0, {{ total_value }}, null, null];
+        
+        if (portfolioValueCtx) {
+            new Chart(portfolioValueCtx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: portfolioLabels,
+                    datasets: [{
+                        label: 'Portfolio Value ($)',
+                        data: portfolioData,
+                        borderColor: '#3E8033',
+                        backgroundColor: 'rgba(62, 128, 51, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '$' + context.raw.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            console.error('Portfolio Value Chart element not found!');
+        }
+        
+        // Monthly Budget Chart
+        const monthlyBudgetCtx = document.getElementById('monthlyBudgetChart');
+        const budgetData = {{ budget_data|safe }};
+        
+        if (monthlyBudgetCtx) {
+            if (budgetData && budgetData.labels && budgetData.labels.length > 0) {
+                new Chart(monthlyBudgetCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: budgetData.labels,
+                        datasets: [
+                            {
+                                label: 'Planned',
+                                data: budgetData.planned,
+                                backgroundColor: 'rgba(62, 128, 51, 0.7)',
+                                borderColor: '#3E8033',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Actual',
+                                data: budgetData.actual,
+                                backgroundColor: 'rgba(95, 165, 84, 0.7)',
+                                borderColor: '#5FA554',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                // If no budget data, show generic monthly income/expenses
+                new Chart(monthlyBudgetCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Income', 'Expenses', 'Savings'],
+                        datasets: [{
+                            data: [{{ monthly_income }}, {{ monthly_expenses }}, {{ monthly_income|subtract:monthly_expenses }}],
+                            backgroundColor: [
+                                'rgba(62, 128, 51, 0.7)', // Income - green
+                                'rgba(212, 175, 55, 0.7)', // Expenses - gold
+                                'rgba(95, 165, 84, 0.7)'  // Savings - light green
+                            ],
+                            borderColor: [
+                                '#3E8033',
+                                '#D4AF37',
+                                '#5FA554'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value;
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Retirement Projection Chart
+        const retirementCtx = document.getElementById('retirementProjectionChart');
+        if (retirementCtx) {
+            console.log("Found retirement chart element, initializing...");
+            
+            // Get data using the same approach as planning.html
+            const currentAge = {{ current_age|default:30 }};
+            const retirementAge = 65;
+            const currentSavings = {{ user_profile.current_retirement_savings|default:50000 }};
+            const monthlySavings = {{ user_profile.monthly_savings_goal|default:2000 }};
+            const expectedReturn = {{ user_profile.expected_annual_return|default:7 }} / 100;
+            
+            // Calculate years to retirement
+            const yearsToRetirement = retirementAge - currentAge;
+            
+            // Update the progress percentage displayed in the text
+            const progressElement = document.querySelector('.progress-percentage');
+            if (progressElement) {
+                const targetSavings = 2000000;
+                const progress = Math.min(100, Math.round((currentSavings / targetSavings) * 100));
+                progressElement.textContent = progress + '%';
+            }
+            
+            // Update the estimated retirement savings value
+            const savingsElement = document.querySelector('.col-md-6 h3.text-success');
+            if (savingsElement) {
+                // Calculate future value - copy of planning.html calculation
+                let futureValue = currentSavings * Math.pow(1 + expectedReturn, yearsToRetirement);
+                
+                // Add contributions - copy of planning.html calculation
+                const annualSavings = monthlySavings * 12;
+                for (let i = 0; i < yearsToRetirement; i++) {
+                    futureValue += annualSavings * Math.pow(1 + expectedReturn, i);
+                }
+                
+                savingsElement.textContent = '$' + Math.round(futureValue).toLocaleString();
+            }
+            
+            // Generate projection data for chart - same as planning.html
+            const projectionData = {
+                ages: [],
+                savings: [],
+                target: []
+            };
+            
+            // Define annualSavings here to ensure it's available for the chart
+            const annualSavings = monthlySavings * 12;
+            // Define targetSavings as a variable for consistency
+            const targetSavings = 2000000;
+            
+            let runningTotal = currentSavings;
+            
+            for (let age = currentAge; age <= retirementAge; age++) {
+                projectionData.ages.push(age);
+                projectionData.target.push(targetSavings);
+                
+                if (age > currentAge) {
+                    runningTotal = runningTotal * (1 + expectedReturn) + annualSavings;
+                }
+                
+                projectionData.savings.push(runningTotal);
+            }
+            
+            try {
+                new Chart(retirementCtx, {
+                    type: 'line',
+                    data: {
+                        labels: projectionData.ages,
+                        datasets: [
+                            {
+                                label: 'Projected Savings',
+                                data: projectionData.savings,
+                                borderColor: '#3E8033',
+                                backgroundColor: 'rgba(62, 128, 51, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            },
+                            {
+                                label: 'Target',
+                                data: projectionData.target,
+                                borderColor: '#A3794E',
+                                borderDash: [5, 5],
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return '$' + context.raw.toLocaleString();
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString();
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch(e) {
+                console.error("Error creating retirement chart:", e);
+            }
+        } else {
+            console.error("Could not find retirement chart element!");
+        }
+
+        // Category Spending Chart
+        const categorySpendingCtx = document.getElementById('categorySpendingChart');
+        if (categorySpendingCtx) {
+            // Category data
+            const categoryLabels = ['Food & Dining', 'Shopping', 'Transportation', 'Bills & Utilities', 'Entertainment', 'Other'];
+            const categoryData = [450, 340, 180, 650, 220, 380];
+            
+            // Color scheme matching the dashboard theme
+            const categoryColors = [
+                '#3E8033',  // Green - Food & Dining
+                '#D4AF37',  // Gold - Shopping
+                '#4682B4',  // Blue - Transportation
+                '#CD853F',  // Brown - Bills & Utilities
+                '#9370DB',  // Purple - Entertainment
+                '#708090'   // Slate gray - Other
+            ];
+            
+            new Chart(categorySpendingCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: categoryLabels,
+                    datasets: [{
+                        data: categoryData,
+                        backgroundColor: categoryColors,
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: {
+                                    size: 10,
+                                    family: 'Inter, sans-serif'
+                                },
+                                boxWidth: 10,
+                                padding: 5,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.formattedValue;
+                                    return `${label}: $${value}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 

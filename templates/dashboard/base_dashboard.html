@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    /* Override any container width limitations from Bootstrap */
+    .container,
+    .container-fluid {
+        max-width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    
+    /* Dashboard layout to fill full width */
+    .dashboard-container {
+        display: flex;
+        min-height: 100vh;
+        padding: 0;
+        margin: 0;
+        width: 100%;
+    }
+    
+    .sidebar {
+        width: 280px;
+        background-color: var(--primary-dark);
+        color: var(--secondary-light);
+        min-height: 100vh;
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 100;
+    }
+    
+    /* Logo styling */
+    .sidebar-logo {
+        height: 130px;
+        max-width: 90%;
+        padding: 10px 0;
+        margin: 15px auto;
+        display: block;
+        /* Apply a filter to make the logo cream colored */
+        filter: brightness(0) saturate(100%) invert(92%) sepia(8%) saturate(634%) hue-rotate(12deg) brightness(106%) contrast(94%);
+    }
+    
+    .sidebar-header {
+        padding: 20px 15px 5px 15px;
+        text-align: center;
+    }
+    
+    .logo-link {
+        text-decoration: none;
+        display: block;
+        text-align: center;
+    }
+    
+    .sidebar-brand {
+        width: 100%;
+    }
+    
+    .sidebar-divider {
+        margin: 5px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .main-content {
+        flex: 1;
+        padding: 0;
+        margin-left: 280px;
+        background-color: var(--bg-body);
+        width: calc(100% - 280px);
+        max-width: none;
+    }
+    
+    /* Hide any default navigation and margins */
+    body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+    
+    .navbar {
+        display: none;
+    }
+    
+    /* Reset Bootstrap width constraints */
+    @media (min-width: 576px) {
+        .container, .container-sm {
+            max-width: 100%;
+        }
+    }
+    
+    @media (min-width: 768px) {
+        .container, .container-md, .container-sm {
+            max-width: 100%;
+        }
+    }
+    
+    @media (min-width: 992px) {
+        .container, .container-lg, .container-md, .container-sm {
+            max-width: 100%;
+        }
+    }
+    
+    @media (min-width: 1200px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl {
+            max-width: 100%;
+        }
+    }
+    
+    @media (min-width: 1400px) {
+        .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+            max-width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block navigation %}
+{% comment %}
+This empty block completely overrides the navigation from base.html 
+{% endcomment %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-brand text-center">
+                <a href="{% url 'dashboard:dashboard' %}" class="logo-link">
+                    <img src="{% static 'img/logo.png' %}" alt="ConsulWealth" class="sidebar-logo">
+                </a>
+            </div>
+        </div>
+        
+        <div class="sidebar-divider"></div>
+        
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:dashboard' %}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'portfolio' %}active{% endif %}" href="{% url 'dashboard:portfolio' %}">
+                    <i class="fas fa-chart-pie"></i> Portfolio
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'goals' %}active{% endif %}" href="{% url 'dashboard:goals' %}">
+                    <i class="fas fa-bullseye"></i> Goals
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'budgeting' %}active{% endif %}" href="{% url 'dashboard:budgeting' %}">
+                    <i class="fas fa-wallet"></i> Budgeting
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'transactions' %}active{% endif %}" href="{% url 'dashboard:transactions' %}">
+                    <i class="fas fa-exchange-alt"></i> Transactions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'planning' %}active{% endif %}" href="{% url 'dashboard:planning' %}">
+                    <i class="fas fa-piggy-bank"></i> Retirement
+                </a>
+            </li>
+            
+            <div class="sidebar-divider"></div>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'subscription' %}active{% endif %}" href="{% url 'dashboard:subscription' %}">
+                    <i class="fas fa-crown"></i> Subscription
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}" href="{% url 'profile' %}">
+                    <i class="fas fa-user-circle"></i> Profile
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'support' %}active{% endif %}" href="{% url 'dashboard:support' %}">
+                    <i class="fas fa-question-circle"></i> Support
+                </a>
+            </li>
+            
+            <div class="sidebar-divider"></div>
+            
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'supabase:logout' %}">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </li>
+        </ul>
+        
+        <div class="sidebar-footer text-center">
+            <small>© {% now "Y" %} ConsulWealth</small>
+        </div>
+    </nav>
+    
+    <!-- Main content -->
+    <div class="main-content">
+        {% block dashboard_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+{% comment %}
+This empty block completely overrides the footer from base.html
+{% endcomment %}
+{% endblock %}
+
+{% block extra_js %}
+<!-- Custom JS for dashboard functionality -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize dashboard components
+        // You can add additional JavaScript functionality here
+    });
+</script>
+{% endblock %} 

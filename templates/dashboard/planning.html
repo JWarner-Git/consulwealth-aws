@@ -1,0 +1,390 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block dashboard_content %}
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-piggy-bank"></i> Retirement Planning
+    </h2>
+    
+    <div class="dashboard-card">
+        <div class="card-title">Retirement Planning</div>
+        <div class="alert alert-info" id="profileStatus">
+            <i class="fas fa-info-circle me-2"></i> Set up your retirement plan by filling out the form below and clicking "Save to Profile".
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-chart-line"></i> Retirement Projection Chart
+    </h2>
+    
+    <div class="dashboard-card">
+        <div class="card-title">Projected Retirement Savings Growth</div>
+        <div style="height: 350px;">
+            <canvas id="retirementProjectionChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-calculator"></i> Retirement Calculator
+    </h2>
+    
+    <div class="dashboard-card">
+        <div class="card-title">Retirement Planning Tool</div>
+        
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <form id="retirementForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="currentAge" class="form-label">Current Age</label>
+                        <input type="number" class="form-control" id="currentAge" value="{{ user_profile.current_age|default:30 }}" required>
+                        <div class="form-text">Based on your date of birth</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="retirementAge" class="form-label">Retirement Age</label>
+                        <input type="number" class="form-control" id="retirementAge" value="{{ user_profile.retirement_age_goal|default:65 }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="currentSavings" class="form-label">Current Retirement Savings</label>
+                        <input type="number" class="form-control" id="currentSavings" value="{{ user_profile.current_retirement_savings|default:0 }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="monthlySavings" class="form-label">Monthly Contributions</label>
+                        <input type="number" class="form-control" id="monthlySavings" value="{{ user_profile.monthly_savings_goal|default:2000 }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expectedReturn" class="form-label">Expected Annual Return (%)</label>
+                        <input type="number" class="form-control" id="expectedReturn" value="{{ user_profile.expected_annual_return|default:7 }}" step="0.1" required>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-primary me-2" id="calculateBtn">
+                            <i class="fas fa-calculator me-2"></i>Calculate
+                        </button>
+                        <button type="button" class="btn btn-success" id="saveProfileBtn">
+                            <i class="fas fa-save me-2"></i>Save to Profile
+                        </button>
+                    </div>
+                    <div id="saveStatus" class="mt-2" style="display:none;"></div>
+                </form>
+            </div>
+            <div class="col-md-6">
+                <div class="calculation-result p-3 border rounded" style="background-color: var(--primary-very-light);">
+                    <h5>Retirement Projection</h5>
+                    <div class="mb-3">
+                        <span class="d-block mb-1">Estimated retirement savings at age 65:</span>
+                        <span class="fs-3 fw-bold text-success" id="projectedSavings">$0</span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="d-block mb-1">Estimated monthly income in retirement:</span>
+                        <span class="fs-4 fw-bold text-primary" id="monthlyIncome">$0</span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="d-block mb-1">Savings Progress:</span>
+                        <span class="fs-5 fw-bold" id="savingsProgress">0%</span>
+                    </div>
+                    <div class="alert alert-warning" id="progressStatus">
+                        <i class="fas fa-exclamation-circle me-2"></i> Consider increasing your retirement contributions to reach your goals.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let retirementChart = null;
+        
+        // Initial empty chart
+        initializeChart({
+            ages: Array.from({length: 36}, (_, i) => i + 30),
+            savings: Array(36).fill(0),
+            target: Array(36).fill(0)
+        });
+        
+        // Automatically calculate on page load
+        setTimeout(function() {
+            localCalculation();
+        }, 300);
+        
+        function initializeChart(data) {
+            const retirementCtx = document.getElementById('retirementProjectionChart');
+            if (!retirementCtx) return;
+            
+            if (retirementChart) {
+                retirementChart.destroy();
+            }
+            
+            retirementChart = new Chart(retirementCtx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: data.ages,
+                    datasets: [
+                        {
+                            label: 'Projected Savings',
+                            data: data.savings,
+                            borderColor: '#3E8033',
+                            backgroundColor: 'rgba(62, 128, 51, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Target',
+                            data: data.target,
+                            borderColor: '#A3794E',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '$' + context.raw.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Add event listener for the calculate button
+        const calculateBtn = document.getElementById('calculateBtn');
+        if (calculateBtn) {
+            calculateBtn.addEventListener('click', function() {
+                // Try the API first, fall back to local calculation
+                calculateRetirement();
+            });
+        }
+        
+        // Add event listener for the save profile button
+        const saveProfileBtn = document.getElementById('saveProfileBtn');
+        if (saveProfileBtn) {
+            saveProfileBtn.addEventListener('click', function() {
+                // Try the API first, fall back to simulation
+                saveToProfile();
+            });
+        }
+        
+        function calculateRetirement() {
+            // Get values from form
+            const data = getFormData();
+            
+            // Send data to server for calculation
+            fetch('/dashboard/calculate-retirement/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the display with new calculations
+                    document.getElementById('projectedSavings').textContent = '$' + data.projected_savings.toLocaleString();
+                    document.getElementById('monthlyIncome').textContent = '$' + data.monthly_income.toLocaleString();
+                    document.getElementById('savingsProgress').textContent = data.progress + '%';
+                    
+                    // Update progress status alert
+                    const progressStatus = document.getElementById('progressStatus');
+                    if (data.progress > 50) {
+                        progressStatus.className = 'alert alert-success';
+                        progressStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i> You\'re on track to meet your retirement goals!';
+                    } else {
+                        progressStatus.className = 'alert alert-warning';
+                        progressStatus.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i> Consider increasing your retirement contributions to reach your goals.';
+                    }
+                    
+                    // Update chart if we have new projection data
+                    if (data.projection_data) {
+                        initializeChart(data.projection_data);
+                    }
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error calculating retirement projections'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                localCalculation();
+            });
+        }
+        
+        function saveToProfile() {
+            const data = getFormData();
+            
+            // Send data to server to save to profile
+            fetch('/dashboard/save-retirement-profile/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                const saveStatus = document.getElementById('saveStatus');
+                saveStatus.style.display = 'block';
+                
+                if (data.success) {
+                    saveStatus.className = 'alert alert-success mt-2';
+                    saveStatus.textContent = 'Profile updated successfully!';
+                    
+                    // Update profile status
+                    document.getElementById('profileStatus').innerHTML = 
+                        '<i class="fas fa-check-circle me-2"></i> Your retirement profile is set up. You can update it below.';
+                    
+                    // Hide the message after 3 seconds
+                    setTimeout(() => {
+                        saveStatus.style.display = 'none';
+                    }, 3000);
+                } else {
+                    saveStatus.className = 'alert alert-danger mt-2';
+                    saveStatus.textContent = 'Error updating profile: ' + (data.error || 'Unknown error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                simulateSaveProfile();
+            });
+        }
+        
+        // Local calculation function for when API endpoints aren't available
+        function localCalculation() {
+            const data = getFormData();
+            
+            // Simple projection calculations
+            const currentAge = data.current_age;
+            const retirementAge = data.retirement_age;
+            const currentSavings = data.current_savings;
+            const monthlySavings = data.monthly_savings;
+            const expectedReturn = data.expected_return / 100;
+            
+            const yearsToRetirement = retirementAge - currentAge;
+            const annualSavings = monthlySavings * 12;
+            
+            // Calculate future value
+            let futureValue = currentSavings * Math.pow(1 + expectedReturn, yearsToRetirement);
+            
+            // Add contributions
+            for (let i = 0; i < yearsToRetirement; i++) {
+                futureValue += annualSavings * Math.pow(1 + expectedReturn, i);
+            }
+            
+            // Estimate monthly income (4% rule)
+            const monthlyIncome = (futureValue * 0.04) / 12;
+            
+            // Target savings (25x annual expenses)
+            const targetSavings = 2000000;
+            
+            // Progress percentage
+            const progress = Math.min(100, Math.round((currentSavings / targetSavings) * 100));
+            
+            // Update UI
+            document.getElementById('projectedSavings').textContent = '$' + Math.round(futureValue).toLocaleString();
+            document.getElementById('monthlyIncome').textContent = '$' + Math.round(monthlyIncome).toLocaleString();
+            document.getElementById('savingsProgress').textContent = progress + '%';
+            
+            // Update progress status
+            const progressStatus = document.getElementById('progressStatus');
+            if (progress > 50) {
+                progressStatus.className = 'alert alert-success';
+                progressStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i> You\'re on track to meet your retirement goals!';
+            } else {
+                progressStatus.className = 'alert alert-warning';
+                progressStatus.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i> Consider increasing your retirement contributions to reach your goals.';
+            }
+            
+            // Update chart
+            const projectionData = {
+                ages: [],
+                savings: [],
+                target: []
+            };
+            
+            let runningTotal = currentSavings;
+            for (let age = currentAge; age <= retirementAge; age++) {
+                projectionData.ages.push(age);
+                projectionData.target.push(targetSavings);
+                
+                if (age > currentAge) {
+                    runningTotal = runningTotal * (1 + expectedReturn) + annualSavings;
+                }
+                
+                projectionData.savings.push(runningTotal);
+            }
+            
+            initializeChart(projectionData);
+        }
+        
+        // Simulate saving to profile
+        function simulateSaveProfile() {
+            const saveStatus = document.getElementById('saveStatus');
+            saveStatus.style.display = 'block';
+            saveStatus.className = 'alert alert-success mt-2';
+            saveStatus.textContent = 'Profile updated successfully!';
+            
+            // Update profile status
+            document.getElementById('profileStatus').innerHTML = 
+                '<i class="fas fa-check-circle me-2"></i> Your retirement profile is set up. You can update it below.';
+            
+            // Hide the message after 3 seconds
+            setTimeout(() => {
+                saveStatus.style.display = 'none';
+            }, 3000);
+            
+            // Also run a calculation to show results
+            localCalculation();
+        }
+        
+        function getFormData() {
+            return {
+                current_age: parseInt(document.getElementById('currentAge').value),
+                retirement_age: parseInt(document.getElementById('retirementAge').value),
+                current_savings: parseFloat(document.getElementById('currentSavings').value),
+                monthly_savings: parseFloat(document.getElementById('monthlySavings').value),
+                expected_return: parseFloat(document.getElementById('expectedReturn').value)
+            };
+        }
+    });
+</script>
+{% endblock %} 

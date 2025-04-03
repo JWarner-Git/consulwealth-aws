@@ -1,0 +1,680 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block dashboard_content %}
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-chart-pie"></i> Portfolio Overview
+    </h2>
+    
+    <div class="dashboard-card">
+        <div class="card-title">Investment Summary</div>
+        
+        {% if has_investment_data %}
+        <div class="row">
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <div class="stat-title">Total Portfolio Value</div>
+                    <div class="stat-value">${{ total_value|floatformat:2|intcomma }}</div>
+                    <div class="stat-change text-success">
+                        <i class="fas fa-arrow-up me-1"></i> 0.0% ($0.00)
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <div class="stat-title">Year-to-Date Return</div>
+                    <div class="stat-value">0.0%</div>
+                    <div class="stat-change text-success">
+                        <i class="fas fa-arrow-up me-1"></i> 0.0% from last month
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="row">
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <div class="stat-title">Total Portfolio Value</div>
+                    <div class="stat-value">$0.00</div>
+                    <div class="stat-change">
+                        <i class="fas fa-info-circle me-1"></i> No investment data
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <div class="stat-title">Year-to-Date Return</div>
+                    <div class="stat-value">0.0%</div>
+                    <div class="stat-change">
+                        <i class="fas fa-info-circle me-1"></i> No investment data
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="chart-container mt-4" style="height: 250px; max-width: 100%;">
+            <canvas id="portfolioValueChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-section asset-allocation-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-balance-scale"></i> Asset Allocation
+    </h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Current Allocation</div>
+                {% if has_investment_data %}
+                <div class="chart-container">
+                    <canvas id="assetAllocationChart"></canvas>
+                </div>
+                {% else %}
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i> No investment accounts found. Connect your investment accounts to see your asset allocation.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="dashboard-card">
+                <div class="card-title">Allocation by Account Type</div>
+                {% if has_investment_data %}
+                <div class="chart-container">
+                    <canvas id="accountAllocationChart"></canvas>
+                </div>
+                {% else %}
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i> No investment accounts found. Connect your investment accounts to see your account allocation.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-section">
+    <h2 class="dashboard-section-title">
+        <i class="fas fa-list-ul"></i> Holdings
+    </h2>
+    
+    <div class="dashboard-card">
+        <div class="card-title">Investment Holdings</div>
+        
+        {% if has_investment_data and holdings %}
+        <div class="filter-controls mb-3">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <label class="input-group-text" for="typeFilter">Filter by Type:</label>
+                        <select class="form-select" id="typeFilter">
+                            <option value="all" selected>All Types</option>
+                            <option value="Stock">Stock</option>
+                            <option value="ETF">ETF</option>
+                            <option value="Mutual Fund">Mutual Fund</option>
+                            <option value="Bond">Bond</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Cryptocurrency">Cryptocurrency</option>
+                            <option value="Derivative">Derivative</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span id="filterResults" class="filter-results">Showing all holdings</span>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="dashboard-table holdings-table" id="holdingsTable">
+                <thead>
+                    <tr>
+                        <th class="security-col">Security</th>
+                        <th class="type-col">Type</th>
+                        <th class="shares-col text-right">Shares</th>
+                        <th class="price-col text-right">Price</th>
+                        <th class="value-col text-right">Value</th>
+                        <th class="percent-col text-right">% of Portfolio</th>
+                        <th class="return-col text-right">Return</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for holding in holdings %}
+                    <tr>
+                        <td class="security-col">
+                            {% if holding.ticker_symbol != '-' %}
+                            <span class="ticker-symbol">{{ holding.ticker_symbol }}</span>
+                            {% endif %}
+                            <span class="security-name">{{ holding.name }}</span>
+                        </td>
+                        <td class="type-col">
+                            <span class="badge rounded-pill 
+                                {% if holding.type == 'Stock' %}bg-success{% endif %}
+                                {% if holding.type == 'ETF' %}bg-primary{% endif %}
+                                {% if holding.type == 'Mutual Fund' %}bg-info{% endif %}
+                                {% if holding.type == 'Bond' %}bg-secondary{% endif %}
+                                {% if holding.type == 'Cash' %}bg-warning text-dark{% endif %}
+                                {% if holding.type == 'Cryptocurrency' %}bg-dark{% endif %}
+                                {% if holding.type == 'Derivative' %}bg-light text-dark{% endif %}
+                                {% if holding.type not in 'Stock,ETF,Mutual Fund,Bond,Cash,Cryptocurrency,Derivative' %}bg-secondary{% endif %}
+                            ">
+                                {{ holding.type }}
+                            </span>
+                        </td>
+                        <td class="shares-col text-right">{{ holding.quantity|floatformat:2|intcomma }}</td>
+                        <td class="price-col text-right">${{ holding.price|floatformat:2|intcomma }}</td>
+                        <td class="value-col text-right">${{ holding.value|floatformat:2|intcomma }}</td>
+                        <td class="percent-col text-right">{{ holding.percentage|floatformat:2 }}%</td>
+                        <td class="return-col text-right">
+                            <span class="{% if holding.return >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if holding.return >= 0 %}<i class="fas fa-arrow-up me-1"></i>{% else %}<i class="fas fa-arrow-down me-1"></i>{% endif %}
+                                {{ holding.return|floatformat:2 }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-end"><strong>Total Portfolio Value:</strong></td>
+                        <td class="text-right"><strong>${{ total_value|floatformat:2|intcomma }}</strong></td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info mt-3">
+            <i class="fas fa-info-circle me-2"></i> No investment holdings found. Connect your investment accounts to see your holdings.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    /* Add overall page padding */
+    .dashboard-section {
+        width: 100%;
+        max-width: 100%;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+    
+    /* Fix container issues */
+    .container-fluid, 
+    .container,
+    .col-md-12 {
+        max-width: 100%;
+        width: 100%;
+        padding-left: 0;
+        padding-right: 0;
+    }
+    
+    /* Filter controls styling */
+    .filter-controls {
+        background-color: var(--tan-light);
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .filter-controls label {
+        font-weight: 600;
+        color: var(--primary-dark);
+        background-color: var(--tan-medium);
+        border: none;
+    }
+    
+    .filter-controls .form-select {
+        border: 1px solid var(--tan-medium);
+        background-color: white;
+        color: var(--body-color);
+    }
+    
+    .filter-results {
+        font-style: italic;
+        color: var(--primary-dark);
+    }
+    
+    /* Hide filtered rows */
+    .holdings-table tr.filtered {
+        display: none;
+    }
+    
+    /* Adjust allocation charts layout */
+    .dashboard-section .row {
+        display: flex;
+        margin-left: -15px;
+        margin-right: -15px;
+    }
+    
+    .dashboard-section .col-md-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    /* Make chart containers more square */
+    .chart-container {
+        width: 100%;
+        height: 300px;
+        position: relative;
+        margin: 0 auto;
+        max-width: 600px;
+    }
+    
+    /* Fix margin issues */
+    .dashboard-card {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+        margin-bottom: 30px;
+        padding: 20px;
+        border-radius: 8px;
+    }
+    
+    /* Enhanced styles for holdings table */
+    .holdings-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .holdings-table th, 
+    .holdings-table td {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+    }
+    
+    .holdings-table thead th {
+        background-color: var(--tan-light);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--tan-dark);
+    }
+    
+    .holdings-table tbody tr {
+        transition: background-color 0.2s;
+    }
+    
+    .holdings-table tbody tr:hover {
+        background-color: rgba(234, 227, 210, 0.3);
+    }
+    
+    .holdings-table tbody tr:not(:last-child) {
+        border-bottom: 1px solid var(--tan-medium);
+    }
+    
+    /* Column specific styles */
+    .security-col {
+        width: 25%;
+        max-width: 300px;
+    }
+    
+    .type-col {
+        width: 12%;
+    }
+    
+    .shares-col, 
+    .price-col,
+    .value-col,
+    .percent-col,
+    .return-col {
+        width: 10%;
+    }
+    
+    .text-right {
+        text-align: right;
+    }
+    
+    /* Security name and ticker styling */
+    .ticker-symbol {
+        font-weight: 700;
+        margin-right: 0.5rem;
+        color: var(--primary-dark);
+    }
+    
+    .security-name {
+        color: var(--body-color);
+        font-weight: 400;
+    }
+    
+    /* Badge styling */
+    .badge {
+        font-weight: 500;
+        font-size: 0.75rem;
+        padding: 0.35em 0.65em;
+    }
+    
+    /* Footer styling */
+    .holdings-table tfoot {
+        background-color: var(--tan-light);
+        font-weight: 600;
+    }
+    
+    .holdings-table tfoot td {
+        border-top: 2px solid var(--tan-dark);
+    }
+
+    /* Ensure table takes full width */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+    }
+    
+    /* Section titles */
+    .dashboard-section-title {
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--primary-medium);
+        color: var(--primary-dark);
+    }
+    
+    /* Section spacing */
+    .dashboard-section {
+        margin-bottom: 30px;
+    }
+    
+    /* Card title styling */
+    .card-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: var(--primary-dark);
+    }
+    
+    /* Fix row spacing in Asset Allocation section */
+    .row {
+        margin-left: -15px;
+        margin-right: -15px;
+    }
+    
+    /* Chart positioning */
+    canvas#assetAllocationChart,
+    canvas#accountAllocationChart {
+        margin: 0 auto;
+        display: block;
+    }
+    
+    /* Asset allocation section */
+    .asset-allocation-section .dashboard-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    /* Keep legends in view */
+    .chart-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    /* Make portfolio value chart full width */
+    .portfolio-value-chart {
+        max-width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Portfolio Value Chart
+        const portfolioValueCtx = document.getElementById('portfolioValueChart').getContext('2d');
+        
+        // Create labels for all months of the current year
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        // Get current month (0-indexed in JavaScript)
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        
+        // Create data array with null values for all months except current month
+        const portfolioData = Array(12).fill(null);
+        
+        {% if has_investment_data %}
+        // Set the real data only for the current month
+        portfolioData[currentMonth] = {{ total_value }};
+        {% endif %}
+        
+        const portfolioValueChart = new Chart(portfolioValueCtx, {
+            type: 'line',
+            data: {
+                labels: monthNames,
+                datasets: [{
+                    label: 'Portfolio Value ($)',
+                    data: portfolioData,
+                    borderColor: '#3E8033',
+                    backgroundColor: 'rgba(62, 128, 51, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `$${context.parsed.y.toLocaleString()}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return `$${value.toLocaleString()}`;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Asset Allocation Chart
+        const assetAllocationCtx = document.getElementById('assetAllocationChart').getContext('2d');
+        
+        {% if has_investment_data and asset_allocation_labels|length > 0 %}
+        const assetLabels = {{ asset_allocation_labels|safe }};
+        const assetData = {{ asset_allocation_data|safe }};
+        {% else %}
+        const assetLabels = ['No Data'];
+        const assetData = [100];
+        {% endif %}
+        
+        const assetAllocationChart = new Chart(assetAllocationCtx, {
+            type: 'doughnut',
+            data: {
+                labels: assetLabels,
+                datasets: [{
+                    data: assetData,
+                    backgroundColor: [
+                        '#3E8033',  // Green - Stocks
+                        '#5FA554',  // Light green - ETFs
+                        '#8CC63F',  // Lime - Mutual Funds
+                        '#2A592A',  // Dark green - Bonds
+                        '#D4AF37',  // Gold - Cash
+                        '#A3794E',  // Brown - Other
+                        '#6B8E23',  // Olive - Fixed Income
+                        '#9370DB',  // Purple - Cryptocurrency
+                        '#4682B4',  // Steel Blue - Derivatives
+                        '#708090',  // Slate Gray
+                        '#CD853F',  // Peru
+                        '#D2B48C'   // Tan
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: {
+                                family: 'Inter, sans-serif'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round(value / total * 100);
+                                return `${context.label}: ${percentage}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Account Allocation Chart
+        const accountAllocationCtx = document.getElementById('accountAllocationChart').getContext('2d');
+        
+        {% if has_investment_data %}
+        const accountLabels = [];
+        const accountData = [];
+        
+        {% for account in accounts %}
+        accountLabels.push("{{ account.name }}");
+        accountData.push({{ account.portfolio_value|default:account.current_balance|default:"0" }});
+        {% endfor %}
+        
+        // If no data was pushed, use a placeholder
+        if (accountLabels.length === 0) {
+            accountLabels.push('No Accounts');
+            accountData.push(100);
+        }
+        {% else %}
+        const accountLabels = ['No Data'];
+        const accountData = [100];
+        {% endif %}
+        
+        const accountAllocationChart = new Chart(accountAllocationCtx, {
+            type: 'doughnut',
+            data: {
+                labels: accountLabels,
+                datasets: [{
+                    data: accountData,
+                    backgroundColor: [
+                        '#3E8033',
+                        '#5FA554',
+                        '#2A592A',
+                        '#A3794E',
+                        '#EAE0C0',
+                        '#8FBC8F'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: {
+                                family: 'Inter, sans-serif'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: $${context.parsed.toLocaleString()}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Handle type filtering
+        const typeFilter = document.getElementById('typeFilter');
+        const filterResults = document.getElementById('filterResults');
+        const holdingsTable = document.getElementById('holdingsTable');
+        
+        if (typeFilter && holdingsTable) {
+            typeFilter.addEventListener('change', function() {
+                const selectedType = this.value;
+                const rows = holdingsTable.querySelectorAll('tbody tr');
+                let visibleCount = 0;
+                
+                rows.forEach(row => {
+                    const typeCell = row.querySelector('.type-col .badge');
+                    const rowType = typeCell ? typeCell.textContent.trim() : '';
+                    
+                    if (selectedType === 'all' || rowType === selectedType) {
+                        row.classList.remove('filtered');
+                        visibleCount++;
+                    } else {
+                        row.classList.add('filtered');
+                    }
+                });
+                
+                // Update the filter results text
+                if (selectedType === 'all') {
+                    filterResults.textContent = `Showing all holdings (${visibleCount})`;
+                } else {
+                    filterResults.textContent = `Showing ${selectedType} holdings (${visibleCount})`;
+                }
+                
+                // Update the total row
+                const totalValueCell = holdingsTable.querySelector('tfoot tr td:nth-child(5)');
+                if (totalValueCell && selectedType !== 'all') {
+                    // Calculate total of visible rows
+                    let filteredTotal = 0;
+                    rows.forEach(row => {
+                        if (!row.classList.contains('filtered')) {
+                            const valueCell = row.querySelector('.value-col');
+                            if (valueCell) {
+                                // Extract number from format like "$1,234.56"
+                                const valueText = valueCell.textContent.replace(/[^0-9.-]+/g, '');
+                                filteredTotal += parseFloat(valueText) || 0;
+                            }
+                        }
+                    });
+                    
+                    // Format the filtered total
+                    totalValueCell.innerHTML = `<strong>$${filteredTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>`;
+                } else if (totalValueCell) {
+                    // Reset to original total
+                    totalValueCell.innerHTML = `<strong>${{ total_value|floatformat:2|intcomma }}</strong>`;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 
