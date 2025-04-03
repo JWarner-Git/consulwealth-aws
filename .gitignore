@@ -57,4 +57,9 @@ amplify/backend/#current-cloud-backend
 *plaid_items*
 *access_token*
 *client_id*
-*secret* 
+*secret*
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml 
