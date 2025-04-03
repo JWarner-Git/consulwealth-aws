@@ -5,18 +5,22 @@ backend:
       commands:
         - pip install -r requirements.txt
         - python manage.py collectstatic --no-input
-    test:
+    postBuild:
       commands:
-        - echo "No tests specified"
-frontend:
-  phases:
-    build:
-      commands:
-        - echo "No frontend build commands"
+        - echo "Deployed successfully"
   artifacts:
     baseDirectory: staticfiles
     files:
       - '**/*'
   cache:
     paths:
-      - node_modules/**/* 
+      - node_modules/**/*
+customRules:
+  - pattern: '**/*'
+    handler: rewrite
+    target: index.html
+appRoot: .
+  
+webservice:
+  startCommand: gunicorn core.wsgi:application --bind 0.0.0.0:8000
+  port: 8000 

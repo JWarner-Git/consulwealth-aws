@@ -1,0 +1,18 @@
+[build]
+  base    = "."
+  publish = "staticfiles"
+  command = "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+
+[functions]
+  directory = ""
+
+[[redirects]]
+  from = "/*"
+  to = "/.amplify-hosting/custom-backends"
+  status = 200
+  force = true
+
+[[custom_backends]]
+  name = "django"
+  port = 8000
+  command = "gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 30" 
