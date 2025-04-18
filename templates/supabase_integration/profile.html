@@ -221,15 +221,66 @@
                         </div>
                     </div>
                     
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                        <button type="reset" class="btn btn-light me-md-2">Cancel</button>
-                        <button type="submit" class="btn btn-success">Save Changes</button>
+                    <!-- Submit Button -->
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-lg btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
                     </div>
+                </form>
+                
+                <!-- Account Deletion Section -->
+                <div class="profile-section danger-zone mt-5">
+                    <h4><i class="fas fa-exclamation-triangle me-2"></i> Danger Zone</h4>
+                    <div class="alert alert-danger mt-3">
+                        <h5><i class="fas fa-trash-alt me-2"></i> Delete Account</h5>
+                        <p>This action cannot be undone. All your data will be permanently removed, including your subscription and financial information.</p>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                            <i class="fas fa-trash-alt me-2"></i>Delete My Account
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Account Confirmation Modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteAccountModalLabel">Delete Account Confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Warning:</strong> This action is permanent and cannot be undone.
+                </div>
+                <p>Deleting your account will:</p>
+                <ul>
+                    <li>Cancel any active subscriptions</li>
+                    <li>Delete all your financial data</li>
+                    <li>Remove all your personal information</li>
+                    <li>Terminate your access to ConsulWealth</li>
+                </ul>
+                <p>To confirm, please type <strong>DELETE</strong> in the field below:</p>
+                <input type="text" class="form-control" id="deleteConfirmation" placeholder="Type DELETE to confirm">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{% url 'supabase:delete_account' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                        <i class="fas fa-trash-alt me-2"></i>Permanently Delete Account
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -266,5 +317,15 @@
             });
         }
     });
+
+    // Script to enable the delete button only when the user types DELETE correctly
+    const deleteConfirmation = document.getElementById('deleteConfirmation');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    
+    if (deleteConfirmation && confirmDeleteBtn) {
+        deleteConfirmation.addEventListener('input', function() {
+            confirmDeleteBtn.disabled = this.value !== 'DELETE';
+        });
+    }
 </script>
 {% endblock %} 

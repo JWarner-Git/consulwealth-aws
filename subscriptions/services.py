@@ -426,12 +426,29 @@ class StripeService:
                     subscription.cancel_at_period_end = True
                     subscription.save()
                     
+                    # Get current period end from Stripe
+                    current_period_end = None
+                    if hasattr(stripe_subscription, 'current_period_end') and stripe_subscription.current_period_end:
+                        current_period_end = timezone.datetime.fromtimestamp(
+                            int(stripe_subscription.current_period_end),
+                            tz=timezone.get_current_timezone()
+                        ).isoformat()
+                    
                     # Update the user's profile in Supabase
                     profile_data = {
-                        'subscription_status': 'canceled'
+                        'subscription_status': 'canceled',
+                        'subscription_end_date': current_period_end or subscription.current_period_end.isoformat() if subscription.current_period_end else None
                     }
                     
+                    # Try multiple update methods to ensure it updates
                     self.adapter.update_profile(user_id, profile_data)
+                    
+                    # Also try direct update as a backup
+                    try:
+                        from subscriptions.views import update_supabase_profile_directly
+                        update_supabase_profile_directly(user_id, profile_data)
+                    except Exception as direct_update_error:
+                        logger.error(f"Direct profile update error: {str(direct_update_error)}")
                     
                     return {
                         'success': True,
@@ -439,6 +456,42 @@ class StripeService:
                         'current_period_end': subscription.current_period_end
                     }
                 else:
+                    # Check if the user has premium status in Supabase even without a subscription record
+                    # This handles manually set premium users
+                    try:
+                        # Get Supabase client
+                        from supabase_integration.client import get_supabase_client
+                        client = get_supabase_client()
+                        response = client.table('profiles').select('*').eq('id', user_id).execute()
+                        
+                        if response.data and len(response.data) > 0:
+                            user_profile = response.data[0]
+                            
+                            # Check if they're marked as premium
+                            if user_profile.get('is_premium_subscriber', False):
+                                # Update to non-premium
+                                profile_data = {
+                                    'is_premium_subscriber': False,
+                                    'subscription_status': 'canceled',
+                                    'subscription_end_date': timezone.now().isoformat()
+                                }
+                                
+                                # Try both update methods
+                                self.adapter.update_profile(user_id, profile_data)
+                                
+                                try:
+                                    from subscriptions.views import update_supabase_profile_directly
+                                    update_supabase_profile_directly(user_id, profile_data)
+                                except Exception as direct_update_error:
+                                    logger.error(f"Direct profile update error: {str(direct_update_error)}")
+                                
+                                return {
+                                    'success': True,
+                                    'message': 'Premium access canceled'
+                                }
+                    except Exception as profile_check_error:
+                        logger.error(f"Error checking profile premium status: {str(profile_check_error)}")
+                    
                     return {
                         'success': False,
                         'error': 'No active subscription found'

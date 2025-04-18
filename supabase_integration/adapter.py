@@ -1498,4 +1498,87 @@ class SupabaseAdapter:
     
     def get_account_by_plaid_id(self, plaid_account_id):
         """Get an account by its Plaid ID"""
-        return self.plaid_adapter.get_account_by_plaid_id(plaid_account_id) 
+        return self.plaid_adapter.get_account_by_plaid_id(plaid_account_id)
+
+    def verify_jwt_token(self, token):
+        """
+        Verify a JWT token from a mobile client and return the user.
+        
+        Args:
+            token (str): The JWT token to verify
+            
+        Returns:
+            User: The user object if verification succeeds
+            
+        Raises:
+            ValueError: If verification fails
+        """
+        try:
+            # Get the user information from the token
+            response = self.client.auth.get_user(token)
+            
+            if hasattr(response, 'error') and response.error:
+                logger.error(f"Error verifying JWT token: {response.error.message}")
+                raise ValueError(f"Invalid token: {response.error.message}")
+            
+            if not response.user:
+                logger.error("No user found in token response")
+                raise ValueError("Invalid token: No user found")
+            
+            # Check if the user exists in our database
+            user_id = response.user.id
+            user = self.get_user_by_id(user_id)
+            
+            if not user:
+                logger.error(f"User with ID {user_id} not found in database")
+                raise ValueError("User not found")
+                
+            return user
+        except Exception as e:
+            logger.error(f"Error verifying JWT token: {str(e)}")
+            raise ValueError(f"Token verification failed: {str(e)}")
+
+    def get_user_by_id(self, user_id):
+        """
+        Get a user by their ID.
+        
+        Args:
+            user_id (str): The Supabase user ID
+            
+        Returns:
+            User: The user object if found, None otherwise
+        """
+        try:
+            # Query the users table for the user
+            user_data = self.client.table('users').select('*').eq('id', user_id).execute()
+            
+            if not user_data.data:
+                # Try the profiles table as a fallback
+                profile_data = self.client.table('profiles').select('*').eq('id', user_id).execute()
+                
+                if not profile_data.data:
+                    logger.warning(f"User with ID {user_id} not found")
+                    return None
+                    
+                # Create a user object from the profile data
+                user_info = profile_data.data[0]
+            else:
+                user_info = user_data.data[0]
+            
+            # Create a user-like object with the required attributes
+            # This is a simplified approach - in production you might want
+            # to create a proper User object that mimics Django's User
+            class SupabaseUser:
+                def __init__(self, user_data):
+                    self.id = user_data.get('id')
+                    self.email = user_data.get('email')
+                    self.is_authenticated = True
+                    
+                    # Add any other fields you need from the user data
+                    for key, value in user_data.items():
+                        setattr(self, key, value)
+            
+            return SupabaseUser(user_info)
+        except Exception as e:
+            logger.error(f"Error getting user by ID: {str(e)}")
+            return None 

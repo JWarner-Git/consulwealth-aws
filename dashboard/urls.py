@@ -7,7 +7,7 @@ from templates.views.dashboard_views import (
     portfolio_view,
 )
 from .views.transactions_view import all_transactions_view, regular_transactions_view
-from .views.goals_view import goals_view
+from .views.goals_view import goals_view, create_goal, update_goal, delete_goal, add_funds
 from .views.support_view import support_view
 from .views.planning_view import planning_view, calculate_retirement, save_retirement_profile
 from .views.budgeting_view import budgeting_view
@@ -19,6 +19,14 @@ from .views.plaid_connection_view import (
 )
 from dashboard.views import debug_view
 from .views.subscription_view import subscription_view
+from .views.mobile_plaid_view import (
+    create_link_token,
+    exchange_public_token,
+    get_plaid_items,
+    get_accounts,
+    get_transactions,
+    manual_refresh,
+)
 
 app_name = 'dashboard'
 
@@ -43,6 +51,20 @@ urlpatterns = [
     path('api/plaid/create-link-token/', create_link_token_view, name='create_link_token'),
     path('api/plaid/exchange-public-token/', exchange_public_token_view, name='exchange_public_token'),
     path('api/plaid/refresh/', manual_refresh_view, name='manual_refresh'),
+    
+    # Mobile API endpoints
+    path('api/mobile/plaid/create-link-token/', create_link_token, name='mobile_create_link_token'),
+    path('api/mobile/plaid/exchange-public-token/', exchange_public_token, name='mobile_exchange_public_token'),
+    path('api/mobile/plaid/get-plaid-items/', get_plaid_items, name='mobile_get_plaid_items'),
+    path('api/mobile/plaid/get-accounts/', get_accounts, name='mobile_get_accounts'),
+    path('api/mobile/plaid/get-transactions/', get_transactions, name='mobile_get_transactions'),
+    path('api/mobile/plaid/refresh/', manual_refresh, name='mobile_manual_refresh'),
+    
+    # Financial Goals API endpoints
+    path('api/goals/create/', create_goal, name='create_goal'),
+    path('api/goals/update/<uuid:goal_id>/', update_goal, name='update_goal'),
+    path('api/goals/delete/<uuid:goal_id>/', delete_goal, name='delete_goal'),
+    path('api/goals/add-funds/<uuid:goal_id>/', add_funds, name='add_funds'),
 
     # Debug views
     path('debug/transactions/', debug_view.debug_transactions, name='debug_transactions'),

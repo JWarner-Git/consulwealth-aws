@@ -4,10 +4,18 @@ URL Configuration for the ConsulWealth project.
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
+from django.http import HttpResponse
 from supabase_integration.views.profile_views import profile_view
 from django.views.generic import TemplateView
 
+# Simple health check view
+def health_check_view(request):
+    return HttpResponse("OK")
+
 urlpatterns = [
+    # Health check endpoint for Elastic Beanstalk
+    path('health/', health_check_view, name='health_check'),
+    
     path('admin/', admin.site.urls),
     
     # Welcome page (accessible at /welcome/)

@@ -182,14 +182,39 @@ def cancel_subscription(request):
         # Cancel subscription using StripeService
         result = stripe_service.cancel_subscription(request.user)
         
-        return JsonResponse(result)
+        # Update the Supabase user profile directly
+        if result.get('success', False):
+            user_id = request.user.id
+            
+            profile_data = {
+                'subscription_status': 'cancelled',
+            }
+            
+            # Try to update the profile directly
+            update_result = update_supabase_profile_directly(user_id, profile_data)
+            
+            if not update_result:
+                logger.error(f"Failed to update Supabase profile for user {user_id}")
+        
+        # Check if it's an AJAX request
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+            return JsonResponse(result)
+        else:
+            # If it's a regular form submission, redirect to the subscription page with a success message
+            return redirect('subscriptions:subscription_page')
     
     except Exception as e:
         logger.error(f"Error canceling subscription: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        })
+        
+        # Check if it's an AJAX request
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            })
+        else:
+            # If it's a regular form submission, redirect to the subscription page with an error message
+            return redirect('subscriptions:subscription_page')
 
 @login_required
 def debug_user_id(request):
@@ -231,7 +256,40 @@ def subscription_page(request):
     Standalone subscription page that's not under the dashboard namespace.
     This is accessible to non-subscribers.
     """
-    return render(request, 'subscriptions/subscription_page.html', {
+    user_id = request.user.id
+    subscription_data = {}
+    
+    try:
+        # Get Supabase client and fetch the user's profile
+        client = get_supabase_client()
+        response = client.table('profiles').select('*').eq('id', user_id).execute()
+        
+        if response.data and len(response.data) > 0:
+            user_profile = response.data[0]
+            
+            # Check if the user is a premium subscriber
+            is_premium_subscriber = user_profile.get('is_premium_subscriber', False)
+            subscription_plan = user_profile.get('subscription_plan', '')
+            subscription_status = user_profile.get('subscription_status', '')
+            subscription_end_date = user_profile.get('subscription_end_date', None)
+            
+            subscription_data = {
+                'is_premium_subscriber': is_premium_subscriber,
+                'subscription_plan': subscription_plan,
+                'subscription_status': subscription_status,
+                'subscription_end_date': subscription_end_date
+            }
+        
+    except Exception as e:
+        logger.error(f"Error fetching subscription data: {str(e)}")
+        subscription_data = {
+            'is_premium_subscriber': False
+        }
+    
+    context = {
         'page_title': 'Choose Your Plan',
         'stripe_key': settings.STRIPE_PUBLISHABLE_KEY,
-    })
+        **subscription_data
+    }
+    
+    return render(request, 'subscriptions/subscription_page.html', context)

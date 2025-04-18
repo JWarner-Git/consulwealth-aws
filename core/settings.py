@@ -18,11 +18,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-default-key-for-dev')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 # Update allowed hosts for AWS Amplify
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,amplifyapp.com').split(',')
-# Allow all subdomains of amplifyapp.com
+ALLOWED_HOSTS = [
+    'consulwealth.com',
+    'www.consulwealth.com',
+    '52.0.88.97',  # Load balancer IP
+    'consulwealth.us-east-1.elasticbeanstalk.com',
+    '.elasticbeanstalk.com',
+    '172.31.87.107',  # EC2 instance private IP for health checks
+    '172.31.*',      # All internal AWS IPs in this subnet
+    '10.0.0.0/8',    # Standard private network range
+    '172.16.0.0/12', # Standard private network range
+    '192.168.0.0/16',# Standard private network range
+    '*',             # Accept all hosts during troubleshooting - remove in production
+    'localhost',
+    '127.0.0.1',
+]
+
+# Allow all subdomains of amplifyapp.com and elasticbeanstalk.com
 if 'amplifyapp.com' in ALLOWED_HOSTS:
     from fnmatch import fnmatch
     class GlobalSiteMiddleware:
@@ -30,12 +45,25 @@ if 'amplifyapp.com' in ALLOWED_HOSTS:
             self.get_response = get_response
         def __call__(self, request):
             host = request.get_host()
-            if fnmatch(host, '*.amplifyapp.com'):
+            if (fnmatch(host, '*.amplifyapp.com') or 
+                fnmatch(host, '*.consulwealth.com') or 
+                fnmatch(host, '*.elasticbeanstalk.com') or
+                host.endswith('.elb.amazonaws.com')):
                 ALLOWED_HOSTS.append(host)
             return self.get_response(request)
 
 # Add CSRF trusted origins for AWS Amplify
-CSRF_TRUSTED_ORIGINS = ['https://*.amplifyapp.com']
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.amplifyapp.com', 
+    'https://*.consulwealth.com', 
+    'https://consulwealth.com', 
+    'http://*.consulwealth.com', 
+    'http://consulwealth.com',
+    'https://*.elasticbeanstalk.com',
+    'http://*.elasticbeanstalk.com',
+    'https://consulwealth.us-east-1.elasticbeanstalk.com',
+    'http://consulwealth.us-east-1.elasticbeanstalk.com',
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -56,10 +84,14 @@ INSTALLED_APPS = [
     
     # Third-party apps
     'rest_framework',
+    'whitenoise.runserver_nostatic',
+    'corsheaders',  # Add cors headers app
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add whitenoise for static files
+    'corsheaders.middleware.CorsMiddleware',  # Add CORS middleware early in the list
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -74,6 +106,39 @@ MIDDLEWARE = [
 # Add AWS Amplify hostname middleware conditionally
 if 'amplifyapp.com' in ALLOWED_HOSTS:
     MIDDLEWARE.insert(0, 'core.settings.GlobalSiteMiddleware')
+
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    'https://consulwealth.com',
+    'https://www.consulwealth.com',
+    'http://localhost:3000',  # For local development
+    'http://localhost:8000',
+]
+
+# Allow credentials (cookies, authorization headers)
+CORS_ALLOW_CREDENTIALS = True
+
+# Additional CORS settings
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 ROOT_URLCONF = 'core.urls'
 
@@ -151,6 +216,12 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+
+# Make sure the static directory exists
+if not os.path.exists(os.path.join(BASE_DIR, 'static')):
+    os.makedirs(os.path.join(BASE_DIR, 'static'))
+if not os.path.exists(STATIC_ROOT):
+    os.makedirs(STATIC_ROOT)
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -250,5 +321,25 @@ LOGGING = {
         },
     },
 }
+
+# Add debug settings for development mode
+if DEBUG:
+    # Debug static file handling
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+    WHITENOISE_USE_FINDERS = True
+    
+    # Add debug toolbar settings if needed
+    # INSTALLED_APPS.append('debug_toolbar')
+    # MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+    # INTERNAL_IPS = ['127.0.0.1']
+else:
+    # Production security settings
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 

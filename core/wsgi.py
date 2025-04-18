@@ -11,6 +11,7 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
+# Set to use production settings in Elastic Beanstalk environment
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.production")
 
 application = get_wsgi_application()

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="60px" viewBox="0 0 200 60" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>ConsulWealth Logo</title>
+    <g id="Logo" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="ConsulWealth-Logo">
+            <!-- Leaf icon -->
+            <path d="M40,15 C25,15 15,25 15,40 C30,40 40,30 40,15 Z" fill="#4D8B48" id="leaf-shape"></path>
+            <path d="M40,15 C40,30 30,40 15,40 C15,25 25,15 40,15 Z" fill="#2B5830" fill-opacity="0.7" id="leaf-highlight"></path>
+            <path d="M27.5,40 L27.5,47.5" stroke="#2B5830" stroke-width="2" stroke-linecap="round" id="leaf-stem"></path>
+            
+            <!-- Company name -->
+            <text id="Consul" font-family="Lora, serif" font-size="22" font-weight="bold" fill="#2B5830">
+                <tspan x="50" y="32">Consul</tspan>
+            </text>
+            <text id="Wealth" font-family="Lora, serif" font-size="22" font-weight="bold" fill="#4D8B48">
+                <tspan x="113" y="32">Wealth</tspan>
+            </text>
+            
+            <!-- Tagline -->
+            <text id="Financial-Planning" font-family="Inter, sans-serif" font-size="10" font-weight="normal" fill="#66a556">
+                <tspan x="50" y="45">Financial Planning</tspan>
+            </text>
+        </g>
+    </g>
+</svg> 

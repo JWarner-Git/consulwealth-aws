@@ -343,15 +343,218 @@
         color: #666;
         line-height: 1.5;
     }
+    
+    .active-subscription-card {
+        background-color: var(--tan-lighter);
+        border-radius: 12px;
+        border: 2px solid var(--primary-color);
+        padding: 30px;
+        max-width: 800px;
+        width: 100%;
+        box-shadow: 0 4px 20px rgba(62, 128, 51, 0.15);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+    
+    .active-subscription-card::before {
+        content: "Active Plan";
+        position: absolute;
+        top: 15px;
+        right: -35px;
+        background-color: var(--primary-color);
+        color: white;
+        padding: 5px 40px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        transform: rotate(45deg);
+    }
+    
+    .subscription-details {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        background-color: rgba(62, 128, 51, 0.05);
+        padding: 15px;
+        border-radius: 8px;
+    }
+    
+    .subscription-icon {
+        width: 50px;
+        height: 50px;
+        background-color: var(--primary-color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        margin-right: 15px;
+    }
+    
+    .subscription-info h3 {
+        font-size: 1.2rem;
+        margin-bottom: 5px;
+        color: #333;
+    }
+    
+    .subscription-date {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    
+    .subscription-actions {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .btn-action {
+        flex: 1;
+        text-align: center;
+    }
+    
+    .select-btn.danger {
+        background-color: #dc3545;
+    }
+    
+    .select-btn.danger:hover {
+        background-color: #bd2130;
+    }
+    
+    /* Cancellation modal */
+    .modal-content {
+        background-color: var(--tan-lightest);
+        border-radius: 12px;
+        border: 1px solid var(--tan-light);
+    }
+    
+    .modal-header {
+        border-bottom: 1px solid var(--tan-light);
+        padding: 20px 25px;
+    }
+    
+    .modal-title {
+        color: #333;
+        font-weight: 600;
+    }
+    
+    .modal-body {
+        padding: 25px;
+    }
+    
+    .modal-footer {
+        border-top: 1px solid var(--tan-light);
+        padding: 15px 25px;
+    }
+    
+    .modal-btn {
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .modal-btn-cancel {
+        background-color: transparent;
+        border: 1px solid #ccc;
+        color: #666;
+    }
+    
+    .modal-btn-cancel:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .modal-btn-confirm {
+        background-color: #dc3545;
+        border: none;
+        color: white;
+    }
+    
+    .modal-btn-confirm:hover {
+        background-color: #bd2130;
+    }
 </style>
 
 <div class="dashboard-section" style="padding-bottom: 60px;">
     <!-- Subscription Page Header -->
     <div class="subscription-header">
-        <h1>Premium ConsulWealth Subscription</h1>
+        <h1>ConsulWealth Premium Subscription</h1>
         <p>Upgrade your financial planning experience with premium features designed to help you reach your investment goals faster.</p>
     </div>
     
+    {% if is_premium_subscriber %}
+    <!-- Active Subscription section -->
+    <div class="active-subscription-card mx-auto">
+        <div class="subscription-details">
+            <div class="subscription-icon">
+                <i class="fas fa-crown"></i>
+            </div>
+            <div class="subscription-info">
+                <h3>Premium Plan <span class="badge bg-success">Active</span></h3>
+                <div class="subscription-date">Renews on: {{ subscription_end_date|date:"F j, Y" }}</div>
+            </div>
+        </div>
+        
+        <div class="subscription-features">
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Advanced portfolio tracking & analysis</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Unlimited investment goals</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Advanced retirement planning & projections</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Priority customer support</span>
+            </div>
+        </div>
+        
+        <div class="subscription-price mb-4">
+            $14.99<small>/month</small>
+        </div>
+        
+        <div class="subscription-actions">
+            <div class="btn-action">
+                <a href="{% url 'dashboard:dashboard' %}" class="select-btn">
+                    Return to Dashboard
+                </a>
+            </div>
+            <div class="btn-action">
+                <button class="select-btn danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                    Cancel Subscription
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Subscription Modal -->
+    <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cancelModalLabel">Cancel Your Subscription</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to cancel your Premium subscription?</p>
+                    <p>You will lose access to premium features at the end of your current billing period on <strong>{{ subscription_end_date|date:"F j, Y" }}</strong>.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn modal-btn modal-btn-cancel" data-bs-dismiss="modal">Keep Subscription</button>
+                    <form action="{% url 'subscriptions:cancel_subscription' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn modal-btn modal-btn-confirm">Confirm Cancellation</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
     <!-- Subscription Tier -->
     <div class="subscription-cards">
         <!-- Premium Tier -->
@@ -484,6 +687,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 

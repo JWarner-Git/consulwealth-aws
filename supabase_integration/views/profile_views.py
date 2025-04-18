@@ -6,6 +6,9 @@ from django.contrib import messages
 import logging
 from supabase_integration.decorators import login_required
 from supabase_integration.services import SupabaseService
+from django.views.decorators.http import require_POST
+from supabase_integration.client import get_supabase_client
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -135,3 +138,92 @@ def profile_view(request):
         logger.error(f"Error retrieving profile: {str(e)}")
         messages.error(request, "An error occurred while loading your profile.")
         return redirect('dashboard:dashboard') 
+
+@login_required
+@require_POST
+def delete_account(request):
+    """Handle account deletion."""
+    try:
+        supabase_id = request.user.id
+        user_email = request.user.email
+        
+        if not supabase_id:
+            messages.error(request, "Unable to identify your account. Please log in again.")
+            return redirect('profile')
+        
+        logger.info(f"Processing account deletion for user {supabase_id}")
+        
+        # Step 1: Cancel any active subscriptions
+        try:
+            from subscriptions.services import StripeService
+            stripe_service = StripeService()
+            cancellation_result = stripe_service.cancel_subscription(request.user)
+            
+            if cancellation_result.get('success', False):
+                logger.info(f"Successfully cancelled subscription for user {supabase_id}")
+            else:
+                logger.warning(f"No active subscription found or cancellation failed for user {supabase_id}")
+        except Exception as sub_error:
+            logger.error(f"Error cancelling subscription: {str(sub_error)}")
+        
+        # Step 2: Delete user data from Supabase
+        try:
+            client = get_supabase_client()
+            
+            # Delete from profiles table
+            profile_response = client.table('profiles').delete().eq('id', supabase_id).execute()
+            logger.info(f"Profile deletion response: {profile_response}")
+            
+            # Delete from auth.users using admin APIs if enabled
+            if hasattr(settings, 'SUPABASE_SECRET') and settings.SUPABASE_SECRET:
+                try:
+                    import requests
+                    
+                    # This requires Supabase Service Role Key for auth admin access
+                    admin_url = f"{settings.SUPABASE_URL}/auth/v1/admin/users/{supabase_id}"
+                    headers = {
+                        'apikey': settings.SUPABASE_KEY,
+                        'Authorization': f'Bearer {settings.SUPABASE_SECRET}'
+                    }
+                    
+                    response = requests.delete(admin_url, headers=headers)
+                    logger.info(f"Auth user deletion response: {response.status_code}")
+                    
+                    if response.status_code == 200:
+                        logger.info(f"Successfully deleted auth user {supabase_id}")
+                    else:
+                        logger.warning(f"Failed to delete auth user from Supabase: {response.text}")
+                except Exception as auth_error:
+                    logger.error(f"Error deleting auth user: {str(auth_error)}")
+        except Exception as db_error:
+            logger.error(f"Error deleting user data from Supabase: {str(db_error)}")
+            messages.error(request, "There was an error deleting your account data.")
+            return redirect('profile')
+        
+        # Step 3: Delete Django shadow user if it exists
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            # Try to find user by email or Supabase ID
+            django_users = User.objects.filter(email=user_email)
+            if django_users.exists():
+                for user in django_users:
+                    user.delete()
+                    logger.info(f"Deleted Django shadow user with email {user_email}")
+        except Exception as django_error:
+            logger.error(f"Error deleting Django shadow user: {str(django_error)}")
+        
+        # Step 4: Clear session and redirect
+        messages.success(request, "Your account has been successfully deleted.")
+        
+        # Clear the session
+        request.session.flush()
+        
+        # Redirect to login page
+        return redirect('supabase:login')
+        
+    except Exception as e:
+        logger.error(f"Error deleting account: {str(e)}")
+        messages.error(request, "An error occurred while deleting your account. Please try again or contact support.")
+        return redirect('profile') 

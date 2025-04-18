@@ -1,6 +1,7 @@
 {% extends 'dashboard/base_dashboard.html' %}
 {% load static %}
 {% load dashboard_filters %}
+{% load humanize %}
 
 {% block dashboard_content %}
 <style>
@@ -266,6 +267,19 @@
         <i class="fas fa-trophy"></i> Financial Goals
     </h2>
     
+    <!-- Display error message if exists -->
+    {% if error_message or messages %}
+    <div class="alert alert-danger mb-4">
+        {% if error_message %}
+            {{ error_message }}
+        {% else %}
+            {% for message in messages %}
+                {{ message }}
+            {% endfor %}
+        {% endif %}
+    </div>
+    {% endif %}
+    
     <!-- Goals Overview Header -->
     <div class="goals-overview-header">
         <i class="fas fa-bullseye"></i>
@@ -280,7 +294,7 @@
                     <div class="progress-circle-container">
                         <canvas id="overallProgress"></canvas>
                         <div class="progress-text" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                            <div style="font-size: 1.4rem; font-weight: bold; color: var(--primary-dark);">65%</div>
+                            <div style="font-size: 1.4rem; font-weight: bold; color: var(--primary-dark);">{{ overall_progress }}%</div>
                         </div>
                     </div>
                     <div class="summary-stat-label">Overall Progress</div>
@@ -288,13 +302,13 @@
             </div>
             <div class="col-md-4">
                 <div class="summary-stat">
-                    <div class="summary-stat-value">6</div>
+                    <div class="summary-stat-value">{{ active_goals_count }}</div>
                     <div class="summary-stat-label">Active Goals</div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="summary-stat">
-                    <div class="summary-stat-value">$47,500</div>
+                    <div class="summary-stat-value">${{ total_saved|floatformat:0|intcomma }}</div>
                     <div class="summary-stat-label">Total Saved</div>
                 </div>
             </div>
@@ -303,293 +317,85 @@
     
     <!-- Goal Cards -->
     <div class="row">
-        <!-- Home Down Payment -->
+        {% if goals %}
+            {% for goal in goals %}
         <div class="col-md-6">
-            <div class="goal-card">
+                <div class="goal-card" data-goal-id="{{ goal.id }}" data-target-date="{{ goal.target_date|date:'Y-m-d' }}">
                 <div class="goal-card-header">
                     <h5>
-                        <div class="goal-icon goal-icon-home">
+                            <div class="goal-icon goal-icon-{{ goal.frontend_goal_type|default:goal.goal_type|default:'other' }}">
+                                {% if goal.frontend_goal_type == 'home' or goal.goal_type == 'home' %}
                             <i class="fas fa-home"></i>
+                                {% elif goal.frontend_goal_type == 'emergency' or goal.goal_type == 'emergency' %}
+                                    <i class="fas fa-shield-alt"></i>
+                                {% elif goal.frontend_goal_type == 'vacation' or goal.goal_type == 'vacation' %}
+                                    <i class="fas fa-plane"></i>
+                                {% elif goal.frontend_goal_type == 'education' or goal.goal_type == 'education' %}
+                                    <i class="fas fa-graduation-cap"></i>
+                                {% elif goal.frontend_goal_type == 'retirement' or goal.goal_type == 'retirement' %}
+                                    <i class="fas fa-umbrella-beach"></i>
+                                {% elif goal.frontend_goal_type == 'vehicle' or goal.goal_type == 'vehicle' %}
+                                    <i class="fas fa-car"></i>
+                                {% elif goal.frontend_goal_type == 'investment' or goal.goal_type == 'investment' %}
+                                    <i class="fas fa-chart-line"></i>
+                                {% elif goal.frontend_goal_type == 'wedding' or goal.goal_type == 'wedding' %}
+                                    <i class="fas fa-ring"></i>
+                                {% elif goal.frontend_goal_type == 'health' or goal.goal_type == 'health' %}
+                                    <i class="fas fa-heartbeat"></i>
+                                {% else %}
+                                    <i class="fas fa-star"></i>
+                                {% endif %}
                         </div>
-                        Home Down Payment
+                            {{ goal.name }}
                     </h5>
-                    <span class="goal-status status-on-track">On Track</span>
+                        <span class="goal-status {{ goal.status_class }}">{{ goal.status_text }}</span>
                 </div>
                 <div class="goal-card-body">
                     <div class="goal-stats">
                         <div class="goal-stat">
                             <div class="goal-stat-label">Saved</div>
-                            <div class="goal-stat-value">$25,000</div>
+                                <div class="goal-stat-value">${{ goal.current_amount|floatformat:0|intcomma }}</div>
                         </div>
                         <div class="goal-stat">
                             <div class="goal-stat-label">Target</div>
-                            <div class="goal-stat-value">$50,000</div>
+                                <div class="goal-stat-value">${{ goal.target_amount|floatformat:0|intcomma }}</div>
                         </div>
                         <div class="goal-stat">
                             <div class="goal-stat-label">Monthly</div>
-                            <div class="goal-stat-value">$800</div>
+                                <div class="goal-stat-value">$--</div>
                         </div>
                         <div class="goal-stat">
                             <div class="goal-stat-label">Deadline</div>
-                            <div class="goal-stat-value">14 mo</div>
+                                <div class="goal-stat-value">{% if goal.time_remaining %}{{ goal.time_remaining }}{% else %}--{% endif %}</div>
                         </div>
                     </div>
                     <div class="goal-progress">
                         <div class="progress progress-bar-custom">
-                            <div class="progress-bar" role="progressbar" style="width: 50%; background-color: #3E8033;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ goal.progress_percentage|default:0 }}%; 
+                                     background-color: {% if goal.progress_percentage < 30 %}#A3794E{% elif goal.progress_percentage < 70 %}#D4AF37{% else %}#3E8033{% endif %};" 
+                                     aria-valuenow="{{ goal.progress_percentage|default:0 }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100"></div>
                         </div>
                         <div class="progress-labels">
-                            <span>$25,000</span>
-                            <span>$50,000</span>
+                                <span>${{ goal.current_amount|floatformat:0|intcomma }}</span>
+                                <span>${{ goal.target_amount|floatformat:0|intcomma }}</span>
                         </div>
                     </div>
                     <div class="goal-actions">
-                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
-                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
+                            <button class="btn btn-sm btn-outline-secondary edit-goal-btn" data-goal-id="{{ goal.id }}">
+                                <i class="fas fa-edit me-1"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary add-funds-btn" data-goal-id="{{ goal.id }}">
+                                <i class="fas fa-plus-circle me-1"></i> Add Funds
+                            </button>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Emergency Fund -->
-        <div class="col-md-6">
-            <div class="goal-card">
-                <div class="goal-card-header">
-                    <h5>
-                        <div class="goal-icon goal-icon-emergency">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        Emergency Fund
-                    </h5>
-                    <span class="goal-status status-at-risk">At Risk</span>
-                </div>
-                <div class="goal-card-body">
-                    <div class="goal-stats">
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Saved</div>
-                            <div class="goal-stat-value">$5,500</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Target</div>
-                            <div class="goal-stat-value">$12,000</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Monthly</div>
-                            <div class="goal-stat-value">$200</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Deadline</div>
-                            <div class="goal-stat-value">6 mo</div>
-                        </div>
-                    </div>
-                    <div class="goal-progress">
-                        <div class="progress progress-bar-custom">
-                            <div class="progress-bar" role="progressbar" style="width: 45%; background-color: #D4AF37;" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <div class="progress-labels">
-                            <span>$5,500</span>
-                            <span>$12,000</span>
-                        </div>
-                    </div>
-                    <div class="goal-actions">
-                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
-                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Vacation Fund -->
-        <div class="col-md-6">
-            <div class="goal-card">
-                <div class="goal-card-header">
-                    <h5>
-                        <div class="goal-icon goal-icon-vacation">
-                            <i class="fas fa-plane"></i>
-                        </div>
-                        Dream Vacation
-                    </h5>
-                    <span class="goal-status status-on-track">On Track</span>
-                </div>
-                <div class="goal-card-body">
-                    <div class="goal-stats">
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Saved</div>
-                            <div class="goal-stat-value">$3,200</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Target</div>
-                            <div class="goal-stat-value">$5,000</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Monthly</div>
-                            <div class="goal-stat-value">$300</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Deadline</div>
-                            <div class="goal-stat-value">7 mo</div>
-                        </div>
-                    </div>
-                    <div class="goal-progress">
-                        <div class="progress progress-bar-custom">
-                            <div class="progress-bar" role="progressbar" style="width: 64%; background-color: #4682B4;" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <div class="progress-labels">
-                            <span>$3,200</span>
-                            <span>$5,000</span>
-                        </div>
-                    </div>
-                    <div class="goal-actions">
-                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
-                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Education Fund -->
-        <div class="col-md-6">
-            <div class="goal-card">
-                <div class="goal-card-header">
-                    <h5>
-                        <div class="goal-icon goal-icon-education">
-                            <i class="fas fa-graduation-cap"></i>
-                        </div>
-                        Education Fund
-                    </h5>
-                    <span class="goal-status status-behind">Behind</span>
-                </div>
-                <div class="goal-card-body">
-                    <div class="goal-stats">
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Saved</div>
-                            <div class="goal-stat-value">$4,800</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Target</div>
-                            <div class="goal-stat-value">$30,000</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Monthly</div>
-                            <div class="goal-stat-value">$350</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Deadline</div>
-                            <div class="goal-stat-value">36 mo</div>
-                        </div>
-                    </div>
-                    <div class="goal-progress">
-                        <div class="progress progress-bar-custom">
-                            <div class="progress-bar" role="progressbar" style="width: 16%; background-color: #A3794E;" aria-valuenow="16" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <div class="progress-labels">
-                            <span>$4,800</span>
-                            <span>$30,000</span>
-                        </div>
-                    </div>
-                    <div class="goal-actions">
-                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
-                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Car Fund -->
-        <div class="col-md-6">
-            <div class="goal-card">
-                <div class="goal-card-header">
-                    <h5>
-                        <div class="goal-icon goal-icon-car">
-                            <i class="fas fa-car"></i>
-                        </div>
-                        New Car
-                    </h5>
-                    <span class="goal-status status-on-track">On Track</span>
-                </div>
-                <div class="goal-card-body">
-                    <div class="goal-stats">
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Saved</div>
-                            <div class="goal-stat-value">$7,500</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Target</div>
-                            <div class="goal-stat-value">$15,000</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Monthly</div>
-                            <div class="goal-stat-value">$500</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Deadline</div>
-                            <div class="goal-stat-value">18 mo</div>
-                        </div>
-                    </div>
-                    <div class="goal-progress">
-                        <div class="progress progress-bar-custom">
-                            <div class="progress-bar" role="progressbar" style="width: 50%; background-color: #6B8E23;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <div class="progress-labels">
-                            <span>$7,500</span>
-                            <span>$15,000</span>
-                        </div>
-                    </div>
-                    <div class="goal-actions">
-                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
-                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Retirement (Long-term)-->
-        <div class="col-md-6">
-            <div class="goal-card">
-                <div class="goal-card-header">
-                    <h5>
-                        <div class="goal-icon goal-icon-retirement">
-                            <i class="fas fa-umbrella-beach"></i>
-                        </div>
-                        Retirement
-                    </h5>
-                    <span class="goal-status status-on-track">On Track</span>
-                </div>
-                <div class="goal-card-body">
-                    <div class="goal-stats">
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Saved</div>
-                            <div class="goal-stat-value">$45,000</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Target</div>
-                            <div class="goal-stat-value">$500K</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Monthly</div>
-                            <div class="goal-stat-value">$800</div>
-                        </div>
-                        <div class="goal-stat">
-                            <div class="goal-stat-label">Timeline</div>
-                            <div class="goal-stat-value">25 yrs</div>
-                        </div>
-                    </div>
-                    <div class="goal-progress">
-                        <div class="progress progress-bar-custom">
-                            <div class="progress-bar" role="progressbar" style="width: 9%; background-color: #8E6542;" aria-valuenow="9" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <div class="progress-labels">
-                            <span>$45,000</span>
-                            <span>$500,000</span>
-                        </div>
-                    </div>
-                    <div class="goal-actions">
-                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editGoalModal"><i class="fas fa-edit me-1"></i> Edit</button>
-                        <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus-circle me-1"></i> Add Funds</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+            {% endfor %}
+        {% endif %}
         
         <!-- Add New Goal Card -->
         <div class="col-md-6">
@@ -597,94 +403,72 @@
                 <i class="fas fa-plus-circle"></i>
                 <h5>Add New Goal</h5>
                 <p class="text-muted">Create a new financial goal to track your progress</p>
-            </div>
-        </div>
-    </div>
-</div>
+                        </div>
+                </div>
+                        </div>
+                        </div>
 
 <!-- Add Goal Modal -->
 <div class="modal fade" id="addGoalModal" tabindex="-1" aria-labelledby="addGoalModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header" style="background-color: var(--primary-dark); color: white;">
-                <h5 class="modal-title" id="addGoalModalLabel"><i class="fas fa-plus-circle me-2"></i>Create New Goal</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="addGoalModalLabel">Add New Financial Goal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="newGoalForm">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="goal-form-group">
-                                <label class="goal-form-label" for="goalName">Goal Name</label>
-                                <input type="text" class="form-control" id="goalName" placeholder="e.g. European Vacation">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="goal-form-group">
-                                <label class="goal-form-label" for="goalType">Goal Type</label>
-                                <select class="form-select" id="goalType">
-                                    <option value="home">Home Down Payment</option>
-                                    <option value="emergency">Emergency Fund</option>
-                                    <option value="vacation">Vacation</option>
-                                    <option value="education">Education</option>
-                                    <option value="retirement">Retirement</option>
-                                    <option value="car">Vehicle</option>
-                                    <option value="debt">Debt Payoff</option>
-                                    <option value="major_purchase">Major Purchase</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                        </div>
+                <div id="createGoalStatus" class="alert" style="display: none;"></div>
+                <form id="addGoalForm" onsubmit="return false;">
+                    <input type="hidden" id="clientRequestId" name="client_request_id">
+                    <div class="mb-3">
+                        <label for="goalName" class="form-label">Goal Name</label>
+                        <input type="text" class="form-control" id="goalName" name="name" required>
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="goal-form-group">
-                                <label class="goal-form-label" for="goalAmount">Target Amount</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="goalAmount" placeholder="10000">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="goal-form-group">
-                                <label class="goal-form-label" for="currentSaved">Current Savings</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="currentSaved" placeholder="0">
-                                </div>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="goalType" class="form-label">Goal Type</label>
+                        <select class="form-select" id="goalType" name="goal_type" required>
+                            <option value="" selected disabled>Select a type</option>
+                            <option value="home">Home Down Payment</option>
+                            <option value="emergency">Emergency Fund</option>
+                            <option value="retirement">Retirement</option>
+                            <option value="education">Education</option>
+                            <option value="vacation">Vacation</option>
+                            <option value="vehicle">Vehicle</option>
+                            <option value="investment">Investment</option>
+                            <option value="wedding">Wedding</option>
+                            <option value="health">Health</option>
+                            <option value="other">Other</option>
+                        </select>
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="goal-form-group">
-                                <label class="goal-form-label" for="targetDate">Target Date</label>
-                                <input type="date" class="form-control" id="targetDate">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="goal-form-group">
-                                <label class="goal-form-label" for="monthlyContribution">Monthly Contribution</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="monthlyContribution" placeholder="500">
-                                </div>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="targetAmount" class="form-label">Target Amount ($)</label>
+                        <input type="number" class="form-control" id="targetAmount" name="target_amount" min="1" required>
                     </div>
-                    
-                    <div class="goal-form-group">
-                        <label class="goal-form-label" for="goalNotes">Notes</label>
-                        <textarea class="form-control" id="goalNotes" rows="3" placeholder="Additional details about your goal..."></textarea>
+                    <div class="mb-3">
+                        <label for="currentSaved" class="form-label">Current Amount Saved ($)</label>
+                        <input type="number" class="form-control" id="currentSaved" name="current_amount" min="0" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="targetDate" class="form-label">Target Date</label>
+                        <input type="date" class="form-control" id="targetDate" name="target_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="monthlyContribution" class="form-label">Suggested Monthly Contribution</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="monthlyContribution" readonly>
+                        </div>
+                        <small class="form-text text-muted">Based on your target date & amount</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" style="background-color: var(--primary-medium); border-color: var(--primary-medium);">Save Goal</button>
+                <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveGoalBtn">Save Goal</button>
             </div>
         </div>
     </div>
@@ -692,21 +476,125 @@
 
 <!-- Edit Goal Modal -->
 <div class="modal fade" id="editGoalModal" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header" style="background-color: var(--primary-dark); color: white;">
-                <h5 class="modal-title" id="editGoalModalLabel"><i class="fas fa-edit me-2"></i>Edit Goal</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="editGoalModalLabel">Edit Financial Goal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div id="editGoalStatus" class="alert" style="display: none;"></div>
                 <form id="editGoalForm">
-                    <!-- Same form fields as add goal modal but with values prefilled -->
+                    <input type="hidden" id="editGoalId" name="id">
+                    <div class="mb-3">
+                        <label for="editGoalName" class="form-label">Goal Name</label>
+                        <input type="text" class="form-control" id="editGoalName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editGoalType" class="form-label">Goal Type</label>
+                        <select class="form-select" id="editGoalType" name="goal_type" required>
+                            <option value="" disabled>Select a type</option>
+                            <option value="home">Home Down Payment</option>
+                            <option value="emergency">Emergency Fund</option>
+                            <option value="retirement">Retirement</option>
+                            <option value="education">Education</option>
+                            <option value="vacation">Vacation</option>
+                            <option value="vehicle">Vehicle</option>
+                            <option value="investment">Investment</option>
+                            <option value="wedding">Wedding</option>
+                            <option value="health">Health</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editTargetAmount" class="form-label">Target Amount ($)</label>
+                        <input type="number" class="form-control" id="editTargetAmount" name="target_amount" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCurrentSaved" class="form-label">Current Amount Saved ($)</label>
+                        <input type="number" class="form-control" id="editCurrentSaved" name="current_amount" min="0" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editTargetDate" class="form-label">Target Date</label>
+                        <input type="date" class="form-control" id="editTargetDate" name="target_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editMonthlyContribution" class="form-label">Suggested Monthly Contribution</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="editMonthlyContribution" readonly>
+                        </div>
+                        <small class="form-text text-muted">Based on your target date & amount</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDescription" class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="editDescription" name="description" rows="2"></textarea>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-danger me-auto">Delete Goal</button>
+                <button type="button" class="btn btn-danger me-auto" id="deleteGoalBtn">Delete Goal</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" style="background-color: var(--primary-medium); border-color: var(--primary-medium);">Save Changes</button>
+                <button type="button" class="btn btn-primary" id="updateGoalBtn">Update Goal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Funds Modal -->
+<div class="modal fade" id="addFundsModal" tabindex="-1" aria-labelledby="addFundsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--primary-dark); color: white;">
+                <h5 class="modal-title" id="addFundsModalLabel"><i class="fas fa-plus-circle me-2"></i>Add Funds</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addFundsForm">
+                    <input type="hidden" id="fundGoalId" name="goal_id">
+                    <div class="mb-3">
+                        <label for="goalTitle" class="form-label">Goal</label>
+                        <input type="text" class="form-control" id="fundGoalTitle" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fundAmount" class="form-label">Amount to Add ($)</label>
+                        <input type="number" class="form-control" id="fundAmount" name="amount" min="1" step="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fundNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="fundNotes" name="notes" rows="2"></textarea>
+                    </div>
+                </form>
+                <div id="addFundsStatus" class="mt-3" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveFundsBtn" style="background-color: var(--primary-medium); border-color: var(--primary-medium);">Add Funds</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this modal right after the Add Funds Modal -->
+<!-- Delete Goal Confirmation Modal -->
+<div class="modal fade" id="deleteGoalConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle text-warning me-2"></i>Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the goal "<span id="deleteGoalName" class="fw-bold"></span>"?</p>
+                <div class="alert alert-warning">
+                    <small><i class="fas fa-info-circle me-1"></i> This action cannot be undone. All progress tracking for this goal will be permanently removed.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteGoalBtn">
+                    <i class="fas fa-trash-alt me-1"></i> Delete Goal
+                </button>
             </div>
         </div>
     </div>
@@ -716,6 +604,55 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Generate a unique ID for requests
+        function generateUniqueId() {
+            const timestamp = new Date().getTime();
+            const random = Math.random().toString(36).substring(2, 10);
+            return `${timestamp}-${random}`;
+        }
+        
+        // FIXED: Initialize modal events without breaking functionality
+        const addGoalModal = document.getElementById('addGoalModal');
+        if (addGoalModal) {
+            addGoalModal.addEventListener('show.bs.modal', function() {
+                console.log('Modal opening - generating new client request ID');
+                const clientRequestIdField = document.getElementById('clientRequestId');
+                if (clientRequestIdField) {
+                    clientRequestIdField.value = generateUniqueId();
+                }
+                
+                // Reset form fields when opening modal
+                const form = document.getElementById('addGoalForm');
+                if (form) {
+                    form.reset();
+                }
+                
+                // Hide any previous status messages
+                const statusElement = document.getElementById('createGoalStatus');
+                if (statusElement) {
+                    statusElement.style.display = 'none';
+                }
+            });
+        }
+        
+        // FIXED: Don't clone and replace forms, just prevent default submission
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.setAttribute('onsubmit', 'return false;');
+            form.addEventListener('submit', function(e) {
+                console.log('Form submit intercepted and prevented');
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }, true);
+        });
+        
+        // Fix any button within forms to not submit the form by default
+        const buttonsInForms = document.querySelectorAll('form button:not([type])');
+        buttonsInForms.forEach(button => {
+            button.setAttribute('type', 'button');
+        });
+        
         // Portfolio color scheme
         const portfolioColors = {
             greenDark: '#3E8033',    // Main green
@@ -732,64 +669,643 @@
             tanLight: '#D2B48C'      // Light tan
         };
         
-        // Initialize overall progress chart
-        const overallProgressChart = new Chart(
-            document.getElementById('overallProgress').getContext('2d'),
-            {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [65, 35],
-                        backgroundColor: [
-                            portfolioColors.greenMedium,
-                            '#E9ECEF'
-                        ],
-                        borderWidth: 0,
-                        cutout: '80%'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
+        // FIXED: Save new goal without replacing the button element
+        const saveGoalBtn = document.getElementById('saveGoalBtn');
+        if (saveGoalBtn) {
+            // Remove any existing click handlers
+            const newSaveBtn = saveGoalBtn.cloneNode(true);
+            saveGoalBtn.parentNode.replaceChild(newSaveBtn, saveGoalBtn);
+            
+            // Flag to track submission state
+            let isSubmitting = false;
+            
+            // Simple click handler with guards
+            newSaveBtn.addEventListener('click', function(e) {
+                // Prevent default behavior
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Check if already submitting
+                if (isSubmitting) {
+                    console.log('Already submitting, ignoring click');
+                    return;
+                }
+                
+                const form = document.getElementById('addGoalForm');
+                if (!form) return;
+                
+                // Validate form
+                if (!form.reportValidity()) {
+                    return;
+                }
+                
+                // Set submission flag
+                isSubmitting = true;
+                console.log('Starting form submission, isSubmitting=true');
+                
+                // Disable button
+                newSaveBtn.disabled = true;
+                newSaveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+                
+                try {
+                    // Get form data
+                    const formData = new FormData(form);
+                    const formDataObj = Object.fromEntries(formData.entries());
+                    
+                    // Ensure client request ID is set
+                    if (!formDataObj.client_request_id) {
+                        formDataObj.client_request_id = generateUniqueId();
+                        console.log('Generated new client_request_id:', formDataObj.client_request_id);
+                    }
+                    
+                    // Lock form fields
+                    Array.from(form.elements).forEach(el => {
+                        if (el.tagName === 'SELECT') {
+                            el.disabled = true;
+                        } else {
+                            el.readOnly = true;
+                        }
+                    });
+                    
+                    // Send request with timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000);
+                    
+                    console.log('Sending POST request to create goal');
+                    fetch('{% url "dashboard:create_goal" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
                         },
-                        tooltip: {
-                            enabled: false
+                        body: JSON.stringify(formDataObj),
+                        signal: controller.signal
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        clearTimeout(timeoutId);
+                        if (data.success) {
+                            showStatus('createGoalStatus', data.message || 'Goal created successfully!');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        } else {
+                            // Reset on error
+                            newSaveBtn.disabled = false;
+                            newSaveBtn.innerHTML = 'Save Goal';
+                            isSubmitting = false;
+                            
+                            // Unlock form
+                            Array.from(form.elements).forEach(el => {
+                                if (el.tagName === 'SELECT') {
+                                    el.disabled = false;
+                                } else {
+                                    el.readOnly = false;
+                                }
+                            });
+                            
+                            showStatus('createGoalStatus', `Error: ${data.error || 'Unknown error'}`, true);
+                        }
+                    })
+                    .catch(error => {
+                        clearTimeout(timeoutId);
+                        // Reset on error
+                        newSaveBtn.disabled = false;
+                        newSaveBtn.innerHTML = 'Save Goal';
+                        isSubmitting = false;
+                        
+                        // Unlock form
+                        Array.from(form.elements).forEach(el => {
+                            if (el.tagName === 'SELECT') {
+                                el.disabled = false;
+                            } else {
+                                el.readOnly = false;
+                            }
+                        });
+                        
+                        console.error("Error saving goal:", error);
+                        showStatus('createGoalStatus', `Error: ${error.message || 'Unknown error'}`, true);
+                    });
+                } catch (error) {
+                    // Reset on error
+                    newSaveBtn.disabled = false;
+                    newSaveBtn.innerHTML = 'Save Goal';
+                    isSubmitting = false;
+                    
+                    console.error("Error saving goal:", error);
+                    showStatus('createGoalStatus', `Error: ${error.message || 'Unknown error'}`, true);
+                }
+            });
+        }
+        
+        // FIXED: Initialize overall progress chart
+        try {
+            const overallProgressChartContext = document.getElementById('overallProgress');
+            if (overallProgressChartContext) {
+                const overallProgressChart = new Chart(
+                    overallProgressChartContext.getContext('2d'),
+                    {
+                        type: 'doughnut',
+                        data: {
+                            datasets: [{
+                                data: [
+                                    {{ overall_progress|default:0 }}, 
+                                    100 - {{ overall_progress|default:0 }}
+                                ],
+                                backgroundColor: [
+                                    portfolioColors.greenMedium,
+                                    '#E9ECEF'
+                                ],
+                                borderWidth: 0,
+                                cutout: '80%'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    enabled: false
+                                }
+                            }
                         }
                     }
-                }
+                );
             }
-        );
+        } catch (error) {
+            console.error("Error initializing chart:", error);
+        }
         
-        // Calculate monthly contribution needed
-        function calculateMonthlyContribution() {
-            const targetAmount = parseFloat(document.getElementById('goalAmount').value) || 0;
-            const currentSaved = parseFloat(document.getElementById('currentSaved').value) || 0;
-            const targetDate = new Date(document.getElementById('targetDate').value);
-            const today = new Date();
+        // FIXED: Directly add edit goal event listeners without cloning
+        document.querySelectorAll('.edit-goal-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                try {
+                    console.log('Edit button clicked');
+                    const goalId = this.getAttribute('data-goal-id');
+                    if (!goalId) {
+                        console.error('No goal ID found');
+                        return;
+                    }
+                    
+                    const goalCard = document.querySelector(`.goal-card[data-goal-id="${goalId}"]`);
+                    if (!goalCard) {
+                        console.error('Goal card not found for ID:', goalId);
+                        return;
+                    }
+                    
+                    // Get data from the goal card
+                    const headerElement = goalCard.querySelector('.goal-card-header h5');
+                    const iconElement = goalCard.querySelector('.goal-icon');
+                    
+                    if (!headerElement || !iconElement) {
+                        console.error('Required elements not found in goal card');
+                        return;
+                    }
+                    
+                    const goalName = headerElement.textContent.trim();
+                    const goalTypeClass = iconElement.className.split(' ')[1] || '';
+                    const goalType = goalTypeClass.split('-')[2] || 'other';
+                    
+                    // Get amounts from the stats
+                    const statsElements = goalCard.querySelectorAll('.goal-stat-value');
+                    if (statsElements.length < 2) {
+                        console.error('Goal stats not found');
+                        return;
+                    }
+                    
+                    const currentAmount = parseFloat(statsElements[0].textContent.replace(/[$,]/g, '')) || 0;
+                    const targetAmount = parseFloat(statsElements[1].textContent.replace(/[$,]/g, '')) || 0;
+                    
+                    // Extract target date
+                    let targetDate = '';
+                    if (goalCard.hasAttribute('data-target-date')) {
+                        targetDate = goalCard.getAttribute('data-target-date');
+                    }
+                    
+                    console.log('Populating edit form with data:', {
+                        goalId, goalName, goalType, currentAmount, targetAmount, targetDate
+                    });
+                    
+                    // Populate the edit form
+                    document.getElementById('editGoalId').value = goalId;
+                    document.getElementById('editGoalName').value = goalName;
+                    
+                    const typeSelect = document.getElementById('editGoalType');
+                    if (typeSelect) {
+                        // Handle case where the goalType may not be a valid option
+                        if ([...typeSelect.options].some(opt => opt.value === goalType)) {
+                            typeSelect.value = goalType;
+                        } else {
+                            typeSelect.value = 'other';
+                        }
+                    }
+                    
+                    document.getElementById('editTargetAmount').value = targetAmount;
+                    document.getElementById('editCurrentSaved').value = currentAmount;
+                    
+                    if (targetDate) {
+                        document.getElementById('editTargetDate').value = targetDate;
+                    }
+                    
+                    // Open the modal
+                    const editModal = new bootstrap.Modal(document.getElementById('editGoalModal'));
+                    editModal.show();
+                    
+                    // Calculate monthly contribution
+                    recalculateMonthlyEdit();
+                } catch (error) {
+                    console.error("Error opening edit modal:", error);
+                    alert("Error opening edit modal: " + error.message);
+                }
+            });
+        });
+        
+        // Helper function to show status messages
+        function showStatus(elementId, message, isError = false) {
+            const statusElement = document.getElementById(elementId);
+            if (!statusElement) return;
             
-            // Calculate months between now and target date
-            const monthsLeft = (targetDate.getFullYear() - today.getFullYear()) * 12 + 
-                               (targetDate.getMonth() - today.getMonth());
+            statusElement.innerHTML = message;
+            statusElement.className = isError ? 'alert alert-danger' : 'alert alert-success';
+            statusElement.style.display = 'block';
             
-            if (monthsLeft <= 0 || isNaN(monthsLeft)) {
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Function to calculate monthly contribution
+        function calculateMonthlyContribution(targetAmount, currentAmount, targetDate, outputElementId) {
+            const outputElement = document.getElementById(outputElementId);
+            if (!outputElement) return;
+            
+            if (!targetDate || !targetAmount) {
+                outputElement.value = '';
                 return;
             }
             
-            // Calculate monthly contribution needed
-            const amountNeeded = targetAmount - currentSaved;
-            const monthlyContribution = amountNeeded / monthsLeft;
-            
-            // Update the monthly contribution field
-            document.getElementById('monthlyContribution').value = Math.ceil(monthlyContribution);
+            try {
+                const targetDateObj = new Date(targetDate);
+                const today = new Date();
+                
+                // Calculate months between now and target date
+                const monthsLeft = (targetDateObj.getFullYear() - today.getFullYear()) * 12 + 
+                                (targetDateObj.getMonth() - today.getMonth());
+                
+                if (monthsLeft <= 0 || isNaN(monthsLeft) || !targetAmount) {
+                    outputElement.value = '';
+                    return;
+                }
+                
+                // Calculate monthly contribution needed
+                const amountNeeded = targetAmount - currentAmount;
+                const monthlyContribution = amountNeeded / monthsLeft;
+                
+                // Update the monthly contribution field
+                outputElement.value = Math.ceil(monthlyContribution);
+            } catch (error) {
+                console.error("Error calculating monthly contribution:", error);
+                outputElement.value = '';
+            }
         }
         
-        // Add event listeners to recalculate when values change
-        document.getElementById('goalAmount').addEventListener('input', calculateMonthlyContribution);
-        document.getElementById('currentSaved').addEventListener('input', calculateMonthlyContribution);
-        document.getElementById('targetDate').addEventListener('change', calculateMonthlyContribution);
+        // Set up event listeners for the Add Goal form
+        const targetAmountInput = document.getElementById('targetAmount');
+        const currentSavedInput = document.getElementById('currentSaved');
+        const targetDateInput = document.getElementById('targetDate');
+        
+        // Calculate monthly contribution on input change
+        function recalculateMonthly() {
+            if (!targetAmountInput || !currentSavedInput || !targetDateInput) return;
+            
+            calculateMonthlyContribution(
+                parseFloat(targetAmountInput.value) || 0,
+                parseFloat(currentSavedInput.value) || 0,
+                targetDateInput.value,
+                'monthlyContribution'
+            );
+        }
+        
+        if (targetAmountInput && currentSavedInput && targetDateInput) {
+            targetAmountInput.addEventListener('input', recalculateMonthly);
+            currentSavedInput.addEventListener('input', recalculateMonthly);
+            targetDateInput.addEventListener('change', recalculateMonthly);
+        }
+        
+        // Set up event listeners for the Edit Goal form
+        const editTargetAmountInput = document.getElementById('editTargetAmount');
+        const editCurrentSavedInput = document.getElementById('editCurrentSaved');
+        const editTargetDateInput = document.getElementById('editTargetDate');
+        
+        // Calculate monthly contribution on input change for edit form
+        function recalculateMonthlyEdit() {
+            if (!editTargetAmountInput || !editCurrentSavedInput || !editTargetDateInput) return;
+            
+            calculateMonthlyContribution(
+                parseFloat(editTargetAmountInput.value) || 0,
+                parseFloat(editCurrentSavedInput.value) || 0,
+                editTargetDateInput.value,
+                'editMonthlyContribution'
+            );
+        }
+        
+        if (editTargetAmountInput && editCurrentSavedInput && editTargetDateInput) {
+            editTargetAmountInput.addEventListener('input', recalculateMonthlyEdit);
+            editCurrentSavedInput.addEventListener('input', recalculateMonthlyEdit);
+            editTargetDateInput.addEventListener('change', recalculateMonthlyEdit);
+        }
+        
+        // FIXED: Reinstated update goal functionality
+        const updateGoalBtn = document.getElementById('updateGoalBtn');
+        if (updateGoalBtn) {
+            updateGoalBtn.addEventListener('click', function() {
+                console.log('Update goal button clicked');
+                const form = document.getElementById('editGoalForm');
+                if (!form) return;
+                
+                // Simple validation
+                if (!form.reportValidity()) {
+                    return;
+                }
+                
+                // Disable button to prevent double submission
+                updateGoalBtn.disabled = true;
+                updateGoalBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
+                
+                try {
+                    // Get form data
+                    const formData = new FormData(form);
+                    const formDataObj = Object.fromEntries(formData.entries());
+                    const goalId = formDataObj.id;
+                    
+                    if (!goalId) {
+                        updateGoalBtn.disabled = false;
+                        updateGoalBtn.innerHTML = 'Update Goal';
+                        showStatus('editGoalStatus', 'Error: Goal ID is missing', true);
+                        return;
+                    }
+                    
+                    // Remove ID from the data to be sent
+                    delete formDataObj.id;
+                    
+                    // Send the data to the server using hardcoded URL pattern
+                    fetch(`/dashboard/api/goals/update/${goalId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(formDataObj)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showStatus('editGoalStatus', 'Goal updated successfully!');
+                            // Reload the page to show the updated goal
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        } else {
+                            // Re-enable button on error
+                            updateGoalBtn.disabled = false;
+                            updateGoalBtn.innerHTML = 'Update Goal';
+                            showStatus('editGoalStatus', `Error: ${data.error || 'Unknown error'}`, true);
+                        }
+                    })
+                    .catch(error => {
+                        // Re-enable button on error
+                        updateGoalBtn.disabled = false;
+                        updateGoalBtn.innerHTML = 'Update Goal';
+                        console.error("Error updating goal:", error);
+                        showStatus('editGoalStatus', `Error: ${error.message || 'Unknown error'}`, true);
+                    });
+                } catch (error) {
+                    // Re-enable button on error
+                    updateGoalBtn.disabled = false;
+                    updateGoalBtn.innerHTML = 'Update Goal';
+                    console.error("Error updating goal:", error);
+                    showStatus('editGoalStatus', `Error: ${error.message || 'Unknown error'}`, true);
+                }
+            });
+        }
+        
+        // FIXED: Reinstated delete goal functionality with prettier confirmation
+        const deleteGoalBtn = document.getElementById('deleteGoalBtn');
+        if (deleteGoalBtn) {
+            deleteGoalBtn.addEventListener('click', function() {
+                console.log('Delete goal button clicked');
+                
+                // Get goal details for confirmation
+                const goalId = document.getElementById('editGoalId').value;
+                const goalName = document.getElementById('editGoalName').value;
+                
+                if (!goalId) {
+                    showStatus('editGoalStatus', 'Error: Goal ID is missing', true);
+                    return;
+                }
+                
+                // Set the goal name in the confirmation modal
+                document.getElementById('deleteGoalName').textContent = goalName;
+                
+                // Close the edit modal
+                const editModal = bootstrap.Modal.getInstance(document.getElementById('editGoalModal'));
+                if (editModal) {
+                    editModal.hide();
+                }
+                
+                // Show the confirmation modal
+                const deleteConfirmModal = new bootstrap.Modal(document.getElementById('deleteGoalConfirmModal'));
+                deleteConfirmModal.show();
+            });
+        }
+        
+        // Handle the actual deletion when confirmed
+        const confirmDeleteGoalBtn = document.getElementById('confirmDeleteGoalBtn');
+        if (confirmDeleteGoalBtn) {
+            confirmDeleteGoalBtn.addEventListener('click', function() {
+                // Get the goal ID from the edit form (stored before opening this modal)
+                const goalId = document.getElementById('editGoalId').value;
+                if (!goalId) {
+                    // Hide the confirmation modal
+                    const deleteConfirmModal = bootstrap.Modal.getInstance(document.getElementById('deleteGoalConfirmModal'));
+                    if (deleteConfirmModal) {
+                        deleteConfirmModal.hide();
+                    }
+                    return;
+                }
+                
+                // Disable button and show loading
+                confirmDeleteGoalBtn.disabled = true;
+                confirmDeleteGoalBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+                
+                // Send the delete request
+                fetch(`/dashboard/api/goals/delete/${goalId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => {
+                    // Check if response is JSON before trying to parse it
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json();
+                    } else {
+                        // If not JSON, could be a login redirect or server error
+                        if (response.redirected || response.url.includes('login')) {
+                            // User session likely expired
+                            throw new Error('Your session has expired. Please log in again.');
+                        } else if (!response.ok) {
+                            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                        } else {
+                            throw new Error('Server returned an invalid response format');
+                        }
+                    }
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Reload the page to reflect the deletion
+                        window.location.reload();
+                    } else {
+                        // Hide the confirmation modal
+                        const deleteConfirmModal = bootstrap.Modal.getInstance(document.getElementById('deleteGoalConfirmModal'));
+                        if (deleteConfirmModal) {
+                            deleteConfirmModal.hide();
+                        }
+                        
+                        // Show error in a toast or alert
+                        alert(`Error: ${data.error || 'Unknown error'}`);
+                    }
+                })
+                .catch(error => {
+                    // Hide the confirmation modal
+                    const deleteConfirmModal = bootstrap.Modal.getInstance(document.getElementById('deleteGoalConfirmModal'));
+                    if (deleteConfirmModal) {
+                        deleteConfirmModal.hide();
+                    }
+                    
+                    // Re-enable button in case user wants to try again
+                    confirmDeleteGoalBtn.disabled = false;
+                    confirmDeleteGoalBtn.innerHTML = '<i class="fas fa-trash-alt me-1"></i> Delete Goal';
+                    
+                    // Show error
+                    console.error("Error deleting goal:", error);
+                    
+                    // Check if it might be a session timeout
+                    if (error.message.includes('session')) {
+                        alert('Your session has expired. You will be redirected to the login page.');
+                        setTimeout(() => window.location.href = '/login/', 1500);
+                    } else {
+                        alert(`Error: ${error.message || 'Unknown error'}`);
+                    }
+                });
+            });
+        }
+        
+        // FIXED: Reinstated add funds functionality
+        document.querySelectorAll('.add-funds-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                console.log('Add funds button clicked');
+                try {
+                    const goalId = this.getAttribute('data-goal-id');
+                    if (!goalId) return;
+                    
+                    const goalCard = document.querySelector(`.goal-card[data-goal-id="${goalId}"]`);
+                    if (!goalCard) return;
+                    
+                    // Get goal name from the card
+                    const headerElement = goalCard.querySelector('.goal-card-header h5');
+                    if (!headerElement) return;
+                    
+                    const goalName = headerElement.textContent.trim();
+                    
+                    // Populate the add funds form
+                    document.getElementById('fundGoalId').value = goalId;
+                    document.getElementById('fundGoalTitle').value = goalName;
+                    document.getElementById('fundAmount').value = '';
+                    document.getElementById('fundNotes').value = '';
+                    
+                    // Open the modal
+                    const addFundsModal = new bootstrap.Modal(document.getElementById('addFundsModal'));
+                    addFundsModal.show();
+                } catch (error) {
+                    console.error("Error opening add funds modal:", error);
+                }
+            });
+        });
+        
+        // FIXED: Reinstated save funds functionality
+        const saveFundsBtn = document.getElementById('saveFundsBtn');
+        if (saveFundsBtn) {
+            saveFundsBtn.addEventListener('click', function() {
+                console.log('Save funds button clicked');
+                const form = document.getElementById('addFundsForm');
+                if (!form) return;
+                
+                // Simple validation
+                if (!form.reportValidity()) {
+                    return;
+                }
+                
+                try {
+                    // Get form data
+                    const formData = new FormData(form);
+                    const formDataObj = Object.fromEntries(formData.entries());
+                    const goalId = formDataObj.goal_id;
+                    
+                    if (!goalId) {
+                        showStatus('addFundsStatus', 'Error: Goal ID is missing', true);
+                        return;
+                    }
+                    
+                    // Remove goal_id from the data to be sent
+                    delete formDataObj.goal_id;
+                    
+                    // Send the data to the server using hardcoded URL pattern
+                    fetch(`/dashboard/api/goals/add-funds/${goalId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(formDataObj)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showStatus('addFundsStatus', 'Funds added successfully!');
+                            // Reload the page to show the updated goal
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        } else {
+                            showStatus('addFundsStatus', `Error: ${data.error || 'Unknown error'}`, true);
+                        }
+                    })
+                    .catch(error => {
+                        showStatus('addFundsStatus', `Error: ${error.message || 'Unknown error'}`, true);
+                    });
+                } catch (error) {
+                    console.error("Error adding funds:", error);
+                    showStatus('addFundsStatus', `Error: ${error.message || 'Unknown error'}`, true);
+                }
+            });
+        }
+        
+        // Helper function to format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        }
     });
 </script>
 {% endblock %}
